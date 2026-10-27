@@ -23,4 +23,5 @@ nix develop -c just check   # everything CI runs
 
 Other recipes: `just --list`.
 
-Set `BE_URL` to the backend's base URL for server-side data access.
+Set `BE_URL` to the backend's base URL for server-side data access
+(default `https://dummyjson.com`; demo login `emilys` / `emilyspass`).

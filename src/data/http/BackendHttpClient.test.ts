@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { BackendHttpClient } from "@/data/http/BackendHttpClient";
 
 const backend = fakeBackend({
-  "https://be.test/todos": { status: 200, body: { todos: [] } },
+  routes: { "/todos": { status: 200, body: { todos: [] } } },
 });
 
 function runAgainstBackend<A, E>(
@@ -18,7 +18,7 @@ function runAgainstBackend<A, E>(
         ConfigProvider.ConfigProvider,
         ConfigProvider.fromEnv({ env: { BE_URL: "https://be.test" } }),
       ),
-      Effect.provideService(FetchHttpClient.Fetch, backend),
+      Effect.provideService(FetchHttpClient.Fetch, backend.fetch),
     ),
   );
 }
