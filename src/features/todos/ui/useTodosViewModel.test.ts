@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { DEMO_TODOS, DEMO_USER, type FakeTodo } from "@test/fakeBackend";
 import { installFakeBff } from "@test/fakeBff";
+import { fakeRouter } from "@test/fakeRouter";
 import {
   prefetchedQueryClient,
   renderHookWithProviders,
@@ -152,6 +153,43 @@ describe("useTodosViewModel", () => {
     });
   });
 
+  it("puts a todo the backend did not delete back in its place when a todo above it was deleted meanwhile", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+    act(() =>
+      result.current.onEvent({ _tag: "ChangeDraft", value: "Call mom" }),
+    );
+    act(() => result.current.onEvent({ _tag: "AddTodo" }));
+    await settled(queryClient);
+    const [added] = todosOf(result.current.state) as [Todo];
+    bff.takeBackendDown();
+
+    // The added todo is local, so its deletion succeeds without the backend.
+    act(() => {
+      result.current.onEvent({ _tag: "DeleteTodo", todo: added });
+      result.current.onEvent({ _tag: "DeleteTodo", todo: MILK });
+    });
+    await settled(queryClient);
+
+    expect(result.current.state).toStrictEqual({
+      ...loaded(MY_TODOS),
+      alert: "DeleteFailed",
+    });
+  });
+
+  it("puts todos the backend did not delete back in their places, deleted bottom up", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+    bff.takeBackendDown();
+
+    act(() => result.current.onEvent({ _tag: "DeleteTodo", todo: PLANTS }));
+    act(() => result.current.onEvent({ _tag: "DeleteTodo", todo: MILK }));
+    await settled(queryClient);
+
+    expect(result.current.state).toStrictEqual({
+      ...loaded(MY_TODOS),
+      alert: "DeleteFailed",
+    });
+  });
+
   it("toggles and deletes an added todo, which the backend does not store", async () => {
     const { result, queryClient } = await signedInWithTodos();
     act(() =>
@@ -176,6 +214,16 @@ describe("useTodosViewModel", () => {
     );
     await settled(queryClient);
     expect(result.current.state).toStrictEqual(loaded(MY_TODOS));
+  });
+
+  it("goes to the login page when the session ends during a change", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+    bff.backend.revokeTokens();
+
+    act(() => result.current.onEvent({ _tag: "DeleteTodo", todo: MILK }));
+    await settled(queryClient);
+
+    expect(fakeRouter.path).toBe("/login?returnTo=%2F");
   });
 
   it("clears the alert on the next change", async () => {

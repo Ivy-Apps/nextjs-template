@@ -4,18 +4,12 @@ import { fakeRouter } from "@test/fakeRouter";
 import {
   prefetchedQueryClient,
   renderHookWithProviders,
-  testQueryClient,
 } from "@test/renderWithProviders";
 import { act, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ProxyHttpClient } from "@/data/http/ProxyHttpClient";
 import { currentUserQuery } from "@/features/auth/ui/currentUserQuery";
 import { useHeaderViewModel } from "@/features/auth/ui/useHeaderViewModel";
-
-vi.mock(
-  "next/navigation",
-  async () => (await import("@test/fakeRouter")).fakeNavigation,
-);
 
 const bff = installFakeBff();
 
@@ -30,7 +24,8 @@ describe("useHeaderViewModel", () => {
 
     await waitFor(() =>
       expect(result.current.state).toStrictEqual({
-        user: { _tag: "Loaded", user: SIGNED_IN_USER },
+        _tag: "Loaded",
+        user: SIGNED_IN_USER,
         logout: "Idle",
       }),
     );
@@ -45,9 +40,10 @@ describe("useHeaderViewModel", () => {
 
     const { result } = renderHookWithProviders(useHeaderViewModel, browser);
 
-    expect(result.current.state.user).toStrictEqual({
+    expect(result.current.state).toStrictEqual({
       _tag: "Loaded",
       user: SIGNED_IN_USER,
+      logout: "Idle",
     });
     expect(bff.backend.requests.length).toBe(requestsBefore);
   });
@@ -56,29 +52,38 @@ describe("useHeaderViewModel", () => {
     const { result } = renderHookWithProviders(useHeaderViewModel);
 
     await waitFor(() =>
-      expect(result.current.state.user).toStrictEqual({ _tag: "Failed" }),
+      expect(result.current.state).toStrictEqual({
+        _tag: "Failed",
+        logout: "Idle",
+      }),
     );
   });
 
-  it("logs out: ends the session, drops the cache and goes to login", async () => {
+  it("goes to the login page, back to this one after, when the session ends", async () => {
     bff.signIn();
-    const queryClient = testQueryClient();
-    const { result } = renderHookWithProviders(useHeaderViewModel, queryClient);
-    await waitFor(() => expect(result.current.state.user._tag).toBe("Loaded"));
+    bff.backend.revokeTokens();
+
+    renderHookWithProviders(useHeaderViewModel);
+
+    await waitFor(() => expect(fakeRouter.path).toBe("/login?returnTo=%2F"));
+    expect(bff.cookies.size).toBe(0);
+  });
+
+  it("logs out: ends the session and goes to login", async () => {
+    bff.signIn();
+    const { result } = renderHookWithProviders(useHeaderViewModel);
+    await waitFor(() => expect(result.current.state._tag).toBe("Loaded"));
 
     act(() => result.current.onEvent({ _tag: "LogOut" }));
 
     await waitFor(() => expect(fakeRouter.path).toBe("/login"));
     expect(bff.cookies.size).toBe(0);
-    expect(
-      queryClient.getQueryData(currentUserQuery(ProxyHttpClient).queryKey),
-    ).toBeUndefined();
   });
 
   it("reports a logout that could not reach the server", async () => {
     bff.signIn();
     const { result } = renderHookWithProviders(useHeaderViewModel);
-    await waitFor(() => expect(result.current.state.user._tag).toBe("Loaded"));
+    await waitFor(() => expect(result.current.state._tag).toBe("Loaded"));
     bff.goOffline();
 
     act(() => result.current.onEvent({ _tag: "LogOut" }));

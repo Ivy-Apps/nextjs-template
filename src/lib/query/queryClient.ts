@@ -1,4 +1,5 @@
 import { isServer, QueryClient } from "@tanstack/react-query";
+import { SessionExpired } from "@/data/session/AuthRepository";
 
 let browserQueryClient: QueryClient | undefined;
 
@@ -14,7 +15,14 @@ export function getQueryClient(): QueryClient {
 
 function makeQueryClient(): QueryClient {
   return new QueryClient({
-    // Above zero, so data prefetched on the server is not refetched on mount.
-    defaultOptions: { queries: { staleTime: 60_000 } },
+    defaultOptions: {
+      queries: {
+        // Above zero, so data prefetched on the server is not refetched on mount.
+        staleTime: 60_000,
+        // An ended session stays ended: go to login at once instead.
+        retry: (failures, error) =>
+          !(error instanceof SessionExpired) && failures < 3,
+      },
+    },
   });
 }

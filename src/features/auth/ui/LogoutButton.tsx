@@ -1,6 +1,7 @@
 import { LogOutIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { LogoutState } from "@/features/auth/ui/useHeaderViewModel.types";
+import { Alert, AlertDescription } from "@/ui/design-system/components/alert";
 import { Button } from "@/ui/design-system/components/button";
 
 type LogoutButtonProps = {
@@ -14,9 +15,9 @@ export function LogoutButton({ status, onLogOut }: LogoutButtonProps) {
   return (
     <div className="flex items-center gap-2">
       {status === "Failed" && (
-        <p role="alert" className="text-xs text-destructive">
-          {t("logoutFailed")}
-        </p>
+        <Alert variant="destructive" className="w-auto">
+          <AlertDescription>{t("logoutFailed")}</AlertDescription>
+        </Alert>
       )}
       <Button
         variant="outline"

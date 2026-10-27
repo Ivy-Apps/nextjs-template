@@ -24,20 +24,25 @@ const handleI18nRouting = createMiddleware(routing);
 /**
  * Guards every page but the login page and renews the session before i18n
  * routing. A signed-out visitor is sent to the login page with a return path;
- * a signed-in visitor on the login page is sent on to it (or home).
+ * a signed-in visitor on the login page is sent on to it (or home). A backend
+ * that cannot renew the session answers 502 and keeps the session, so a
+ * reload retries the renewal.
  */
-export async function proxy(request: NextRequest) {
-  const session = await Effect.runPromise(
+export function proxy(request: NextRequest): Promise<NextResponse> {
+  return Effect.runPromise(
     resolveSession(readSessionCookies(request.cookies)).pipe(
+      Effect.map((session) => respond(request, session)),
       Effect.catchTag("BackendFailure", () =>
-        Effect.succeed<ResolvedSession>({
-          _tag: "SignedOut",
-          update: { _tag: "Ended" },
-        }),
+        Effect.succeed(
+          new NextResponse("Backend unavailable", { status: 502 }),
+        ),
       ),
       Effect.provide(BackendHttpClient),
     ),
   );
+}
+
+function respond(request: NextRequest, session: ResolvedSession): NextResponse {
   forwardSessionUpdate(request.cookies, session.update);
   const response = route(request, session);
   writeSessionUpdate(response.cookies, session.update);

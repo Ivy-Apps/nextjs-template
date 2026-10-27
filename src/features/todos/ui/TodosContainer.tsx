@@ -9,6 +9,7 @@ import type {
   UiEvent,
   UiState,
 } from "@/features/todos/ui/useTodosViewModel.types";
+import { Alert, AlertDescription } from "@/ui/design-system/components/alert";
 import {
   Card,
   CardContent,
@@ -49,9 +50,9 @@ function TodosContent({
       return <p className="text-sm text-muted-foreground">{t("loading")}</p>;
     case "Failed":
       return (
-        <p role="alert" className="text-sm text-destructive">
-          {t("loadFailed")}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{t("loadFailed")}</AlertDescription>
+        </Alert>
       );
     case "Loaded":
       return (
@@ -62,9 +63,9 @@ function TodosContent({
             onSubmit={() => onEvent({ _tag: "AddTodo" })}
           />
           {state.alert !== "None" && (
-            <p role="alert" className="text-sm text-destructive">
-              {t(`alerts.${state.alert}`)}
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>{t(`alerts.${state.alert}`)}</AlertDescription>
+            </Alert>
           )}
           <TodoItems
             todos={state.todos}

@@ -1,12 +1,9 @@
 import { beforeEach } from "vitest";
 
 /**
- * Stands in for the App Router, which only runs inside Next. Mock
- * `next/navigation` with it at the top of a test file:
- *
- *     vi.mock("next/navigation", async () => (await import("@test/fakeRouter")).fakeNavigation);
- *
- * then read where the screen navigated to from `fakeRouter.path`.
+ * Stands in for the App Router, which only runs inside Next. `test/setup.ts`
+ * mocks `next/navigation` with it for every test; read where the screen
+ * navigated to from `fakeRouter.path`.
  */
 export const fakeRouter = {
   /** The path last navigated to, or undefined before any navigation. */

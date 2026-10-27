@@ -65,14 +65,17 @@ reach client JS.
 1. **Login.** `POST /api/auth/login` (`Credentials` -> `User` or a
    `LoginFailure`) logs in on the backend and sets the `access_token` and
    `refresh_token` cookies: httpOnly, Secure, SameSite=Lax. The backend's own
-   cookies are not forwarded. The login form then replaces the URL with its
+   cookies are not forwarded. The login form then drops the query cache, so
+   no data of the last session survives, and replaces the URL with its
    `returnTo` path.
 2. **Page guard and renewal.** `src/proxy.ts` runs before every page. It
    redirects a signed-out visitor to the localized login page with a
    `returnTo` path (`@/types/ReturnPath`), sends a signed-in visitor on the
    login page on to that path, and renews a missing, expired or near-expiry
    access token with the refresh token before the page renders. The renewed
-   cookies reach both the page's request and the browser.
+   cookies reach both the page's request and the browser. A backend that
+   cannot renew answers 502 and keeps the cookies; only a rejected refresh
+   token ends the session.
 3. **Server prefetch.** A page prefetches through `SessionHttpClient`, which
    sends the access token from the cookies as a Bearer. `PrefetchBoundary`
    dehydrates the query cache into the HTML, so the first paint has the data
@@ -81,7 +84,9 @@ reach client JS.
    `/proxy/<path>`, which forwards any method and query to `BE_URL/<path>`,
    swapping the browser's cookies for the Bearer. On a backend 401 it renews
    once and retries; a rejected refresh token answers 401 and clears the
-   cookies. Paths that would leave `BE_URL` are rejected.
+   cookies. Paths that would leave `BE_URL` are rejected. Any query or
+   mutation failing with `SessionExpired` sends the browser to the localized
+   login page with a `returnTo` path (`QueryProvider`).
 5. **Logout.** `POST /api/auth/logout` clears both cookies, and the header
    replaces the URL with the login page.
 

@@ -3,6 +3,7 @@
 import {
   type UseQueryResult,
   useMutation,
+  useMutationState,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -19,7 +20,6 @@ import {
 import { addTodo } from "@/features/todos/data/TodoRepository";
 import { saveCompleted, saveDeletion } from "@/features/todos/domain/saveTodo";
 import {
-  indexOf,
   insert,
   remove,
   setCompleted,
@@ -35,7 +35,9 @@ import type {
 /**
  * The signed-in user's todos. Adding, toggling and deleting update the list at
  * once and roll back with an alert when the backend refuses. A rollback undoes
- * only its own change, so concurrent changes survive it.
+ * only its own change, so concurrent changes survive it. A todo being deleted
+ * is hidden rather than removed until the backend confirms, so a refused
+ * deletion reappears in its place whatever was deleted meanwhile.
  *
  * The backend does not store a new todo, so a todo added here stays a local
  * todo for the rest of the session (see `saveTodo`).
@@ -73,22 +75,17 @@ export function useTodosViewModel(): {
     },
   });
   const del = useMutation({
+    mutationKey: DELETE_KEY,
     mutationFn: (todo: Todo) => run(saveDeletion(todo)),
-    onMutate: async (todo) => {
-      const index = indexOf(
-        queryClient.getQueryData(query.queryKey) ?? [],
-        todo,
-      );
-      await updateList((list) => remove(list, todo));
-      return { index };
-    },
-    onError: (_error, todo, context) => {
-      failed("DeleteFailed");
-      return updateList((list) => insert(list, context?.index ?? 0, todo));
-    },
+    onSuccess: (_data, todo) => updateList((list) => remove(list, todo)),
+    onError: () => failed("DeleteFailed"),
+  });
+  const deleting = useMutationState({
+    filters: { mutationKey: DELETE_KEY, status: "pending" },
+    select: (mutation) => mutation.state.variables as Todo,
   });
 
-  const state = uiState(todos, form);
+  const state = uiState(todos, deleting, form);
   const onEvent = (event: UiEvent) => {
     switch (event._tag) {
       case "ChangeDraft":
@@ -111,6 +108,8 @@ export function useTodosViewModel(): {
   };
   return { state, onEvent };
 }
+
+const DELETE_KEY = ["todos", "delete"];
 
 type Form = { readonly draft: string; readonly alert: TodoAlert };
 
@@ -136,12 +135,20 @@ function reduceForm(form: Form, event: FormEvent): Form {
   }
 }
 
-function uiState(query: UseQueryResult<TodoList>, form: Form): UiState {
+function uiState(
+  query: UseQueryResult<TodoList>,
+  deleting: ReadonlyArray<Todo>,
+  form: Form,
+): UiState {
   switch (query.status) {
     case "pending":
       return { _tag: "Loading" };
     case "success":
-      return { _tag: "Loaded", todos: query.data, ...form };
+      return {
+        _tag: "Loaded",
+        todos: deleting.reduce(remove, query.data),
+        ...form,
+      };
     case "error":
       return { _tag: "Failed" };
   }

@@ -1,26 +1,25 @@
 import { DEMO_PASSWORD, DEMO_USERNAME } from "@test/fakeBackend";
 import { installFakeBff } from "@test/fakeBff";
 import { fakeRouter } from "@test/fakeRouter";
-import { renderHookWithProviders } from "@test/renderWithProviders";
+import {
+  renderHookWithProviders,
+  testQueryClient,
+} from "@test/renderWithProviders";
 import { act, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ACCESS_TOKEN_COOKIE } from "@/data/session/sessionCookies";
 import { useLoginViewModel } from "@/features/auth/ui/useLoginViewModel";
 import type { UiEvent } from "@/features/auth/ui/useLoginViewModel.types";
 import { ReturnPath } from "@/types/ReturnPath";
 
-vi.mock(
-  "next/navigation",
-  async () => (await import("@test/fakeRouter")).fakeNavigation,
-);
-
 const bff = installFakeBff();
 
 const DESTINATION = ReturnPath.make("/bg/todos?done=true");
 
-function renderLogin() {
-  const { result } = renderHookWithProviders(() =>
-    useLoginViewModel(DESTINATION),
+function renderLogin(queryClient = testQueryClient()) {
+  const { result } = renderHookWithProviders(
+    () => useLoginViewModel(DESTINATION),
+    queryClient,
   );
   // One act per event, so each event sees the state the previous one left.
   const send = (...events: ReadonlyArray<UiEvent>) => {
@@ -40,8 +39,8 @@ describe("useLoginViewModel", () => {
     const { result } = renderLogin();
 
     expect(result.current.state).toStrictEqual({
-      form: { username: "", password: "" },
-      submission: { _tag: "Idle" },
+      _tag: "Idle",
+      fields: { username: "", password: "" },
     });
   });
 
@@ -53,7 +52,7 @@ describe("useLoginViewModel", () => {
       { _tag: "ChangePassword", value: "secret" },
     );
 
-    expect(result.current.state.form).toStrictEqual({
+    expect(result.current.state.fields).toStrictEqual({
       username: "emily",
       password: "secret",
     });
@@ -65,10 +64,19 @@ describe("useLoginViewModel", () => {
     submit(DEMO_USERNAME, DEMO_PASSWORD);
 
     await waitFor(() => expect(fakeRouter.path).toBe(DESTINATION));
-    expect(result.current.state.submission).toStrictEqual({
-      _tag: "LoggedIn",
-    });
+    expect(result.current.state._tag).toBe("LoggedIn");
     expect(bff.cookies.has(ACCESS_TOKEN_COOKIE)).toBe(true);
+  });
+
+  it("drops the last session's cached queries on login", async () => {
+    const queryClient = testQueryClient();
+    queryClient.setQueryData(["last", "session"], "their data");
+    const { submit } = renderLogin(queryClient);
+
+    submit(DEMO_USERNAME, DEMO_PASSWORD);
+
+    await waitFor(() => expect(fakeRouter.path).toBe(DESTINATION));
+    expect(queryClient.getQueryData(["last", "session"])).toBeUndefined();
   });
 
   it("rejects wrong credentials and stays on the page", async () => {
@@ -77,8 +85,9 @@ describe("useLoginViewModel", () => {
     submit(DEMO_USERNAME, "wrong-password");
 
     await waitFor(() =>
-      expect(result.current.state.submission).toStrictEqual({
+      expect(result.current.state).toStrictEqual({
         _tag: "Rejected",
+        fields: { username: DEMO_USERNAME, password: "wrong-password" },
         reason: "InvalidCredentials",
       }),
     );
@@ -92,8 +101,9 @@ describe("useLoginViewModel", () => {
     send({ _tag: "Submit" });
 
     await waitFor(() =>
-      expect(result.current.state.submission).toStrictEqual({
+      expect(result.current.state).toStrictEqual({
         _tag: "Rejected",
+        fields: { username: "", password: "" },
         reason: "InvalidRequest",
       }),
     );
@@ -106,8 +116,9 @@ describe("useLoginViewModel", () => {
     submit(DEMO_USERNAME, DEMO_PASSWORD);
 
     await waitFor(() =>
-      expect(result.current.state.submission).toStrictEqual({
+      expect(result.current.state).toStrictEqual({
         _tag: "Rejected",
+        fields: { username: DEMO_USERNAME, password: DEMO_PASSWORD },
         reason: "BackendUnavailable",
       }),
     );

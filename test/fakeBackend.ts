@@ -23,6 +23,7 @@ export function fakeBackend(options: FakeBackendOptions = {}): FakeBackend {
   const todos = options.todos ?? DEMO_TODOS;
   const issued = new Map<string, Token>();
   const requests: Array<ReceivedRequest> = [];
+  let up = true;
 
   const issue = (kind: Token["kind"], expiresInMins: number): string => {
     const exp = Math.floor(Date.now() / 1000) + expiresInMins * 60;
@@ -137,9 +138,13 @@ export function fakeBackend(options: FakeBackendOptions = {}): FakeBackend {
         body: await request.text(),
       };
       requests.push(received);
-      return handle(received);
+      return up ? handle(received) : unreachable();
     },
     login: () => issuePair(DEFAULT_ACCESS_TOKEN_LIFETIME_MINUTES),
+    revokeTokens: () => issued.clear(),
+    takeDown: () => {
+      up = false;
+    },
   };
 }
 
@@ -151,6 +156,10 @@ export type FakeBackend = {
   readonly requests: ReadonlyArray<ReceivedRequest>;
   /** Issues a token pair for the demo user, as a login would. */
   readonly login: () => { accessToken: string; refreshToken: string };
+  /** Rejects every token issued so far, as a backend revoking sessions. */
+  readonly revokeTokens: () => void;
+  /** Every request fails in transport from now on. */
+  readonly takeDown: () => void;
 };
 
 export type FakeBackendOptions = {
@@ -213,6 +222,11 @@ type Token = { kind: "access" | "refresh"; exp: number };
 
 const DEFAULT_ACCESS_TOKEN_LIFETIME_MINUTES = 60;
 const REFRESH_TOKEN_LIFETIME_MINUTES = 30 * 24 * 60;
+
+/** A failed `fetch`, as when the host cannot be reached. */
+export function unreachable(): Promise<Response> {
+  return Promise.reject(new TypeError("Failed to fetch"));
+}
 
 function serve(routes: Record<string, Route>, pathname: string): Response {
   const route = routes[pathname] ?? {

@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
+    setupFiles: ["test/setup.ts"],
     // next-intl imports `next/server` without an extension, which Node's ESM
     // resolver rejects; let Vite resolve it instead.
     server: { deps: { inline: ["next-intl"] } },

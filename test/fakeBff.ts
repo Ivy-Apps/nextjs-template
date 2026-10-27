@@ -2,6 +2,7 @@ import {
   FAKE_BE_URL,
   type FakeBackend,
   type FakeBackendOptions,
+  unreachable,
 } from "@test/fakeBackend";
 import { installFakeBackend } from "@test/installFakeBackend";
 import { NextRequest, type NextResponse } from "next/server";
@@ -28,9 +29,7 @@ export function installFakeBff(options: FakeBackendOptions = {}) {
     const request = new Request(input, init);
     switch (new URL(request.url).origin) {
       case FAKE_BE_URL:
-        return network === "Online"
-          ? backend.current.fetch(request)
-          : unreachable();
+        return backend.current.fetch(request);
       case location.origin:
         return network === "Offline" ? unreachable() : handle(request, jar);
       default:
@@ -56,9 +55,7 @@ export function installFakeBff(options: FakeBackendOptions = {}) {
       jar.set(REFRESH_TOKEN_COOKIE, tokens.refreshToken);
     },
     /** Every request from the BFF to the backend fails from now on. */
-    takeBackendDown: () => {
-      network = "BackendDown";
-    },
+    takeBackendDown: () => backend.current.takeDown(),
     /** Every request from the browser fails from now on. */
     goOffline: () => {
       network = "Offline";
@@ -66,11 +63,7 @@ export function installFakeBff(options: FakeBackendOptions = {}) {
   };
 }
 
-type Network = "Online" | "BackendDown" | "Offline";
-
-function unreachable(): Promise<Response> {
-  return Promise.reject(new TypeError("Failed to fetch"));
-}
+type Network = "Online" | "Offline";
 
 async function handle(
   request: Request,

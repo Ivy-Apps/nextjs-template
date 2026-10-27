@@ -156,5 +156,17 @@ describe("proxy", () => {
         maxAge: 0,
       });
     });
+
+    it("answers 502 and keeps the cookies when the backend cannot renew", async () => {
+      const tokens = backend.current.login();
+      clock.elapse(61 * MINUTE);
+      backend.current.takeDown();
+
+      const response = await visit("/todos", session(tokens));
+
+      expect(response.status).toBe(502);
+      expect(getRedirectUrl(response)).toBeNull();
+      expect(response.cookies.getAll()).toStrictEqual([]);
+    });
   });
 });

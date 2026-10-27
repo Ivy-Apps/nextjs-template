@@ -1,13 +1,9 @@
-import {
-  dehydrate,
-  hydrate,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { dehydrate, hydrate, QueryClient } from "@tanstack/react-query";
 import { render, renderHook } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactElement, ReactNode } from "react";
 import { messages } from "@/lib/i18n/messages";
+import { QueryProvider } from "@/lib/query/QueryProvider";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 
 /** Renders `ui` inside the app's client providers, in English. */
@@ -63,9 +59,7 @@ function Providers({
   return (
     <NextIntlClientProvider locale="en" messages={messages.en}>
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
+        <QueryProvider client={queryClient}>{children}</QueryProvider>
       </ThemeProvider>
     </NextIntlClientProvider>
   );

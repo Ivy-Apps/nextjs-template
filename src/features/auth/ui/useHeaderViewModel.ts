@@ -5,7 +5,6 @@ import {
   type UseQueryResult,
   useMutation,
   useQuery,
-  useQueryClient,
 } from "@tanstack/react-query";
 import { Effect } from "effect";
 import { FetchHttpClient } from "effect/http";
@@ -16,36 +15,28 @@ import type {
   LogoutState,
   UiEvent,
   UiState,
-  UserState,
 } from "@/features/auth/ui/useHeaderViewModel.types";
 import { useRouter } from "@/lib/i18n/navigation";
 import { LOGIN_PATH } from "@/types/ReturnPath";
 import type { User } from "@/types/User";
 
 /**
- * The signed-in user and the logout action. Logging out drops every cached
- * query, so the next user never sees this one's data, then goes to login.
+ * The signed-in user and the logout action, which ends the session and goes
+ * to login. The login drops this user's cached queries.
  */
 export function useHeaderViewModel(): {
   state: UiState;
   onEvent: (event: UiEvent) => void;
 } {
-  const queryClient = useQueryClient();
   const router = useRouter();
   const user = useQuery(currentUserQuery(ProxyHttpClient));
   const logout = useMutation({
     mutationFn: () =>
       Effect.runPromise(logOut.pipe(Effect.provide(FetchHttpClient.layer))),
-    onSuccess: () => {
-      queryClient.clear();
-      router.replace(LOGIN_PATH);
-    },
+    onSuccess: () => router.replace(LOGIN_PATH),
   });
 
-  const state: UiState = {
-    user: userState(user),
-    logout: logoutState(logout.status),
-  };
+  const state = uiState(user, logoutState(logout.status));
   const onEvent = (event: UiEvent) => {
     switch (event._tag) {
       case "LogOut":
@@ -55,14 +46,14 @@ export function useHeaderViewModel(): {
   return { state, onEvent };
 }
 
-function userState(query: UseQueryResult<User>): UserState {
+function uiState(query: UseQueryResult<User>, logout: LogoutState): UiState {
   switch (query.status) {
     case "pending":
-      return { _tag: "Loading" };
+      return { _tag: "Loading", logout };
     case "success":
-      return { _tag: "Loaded", user: query.data };
+      return { _tag: "Loaded", user: query.data, logout };
     case "error":
-      return { _tag: "Failed" };
+      return { _tag: "Failed", logout };
   }
 }
 
