@@ -147,6 +147,20 @@ export type UiEvent =
   query or router hook (`useTranslations` and `useId` are fine), so any
   `UiState` fixture renders it. Views are what Storybook stories render.
 
+## Stories
+
+- Storybook (`@storybook/nextjs-vite`, config in `.storybook/`) renders every
+  `*.stories.tsx` colocated with its component under `src/`. Next never
+  bundles them: no route imports a story.
+- A View gets one story per `UiState` variant, its `onEvent` a `fn()` from
+  `storybook/test`; a design-system primitive gets one per variant. Add a
+  `play` function to assert an interaction (click, then `expect(onEvent)`).
+- Every story renders in `NextIntlClientProvider` and next-themes'
+  `ThemeProvider`; the toolbar switches the locale (en, bg) and the theme.
+- `just storybook` serves it on port 3006. `just stories` runs the `storybook`
+  Vitest project: each story renders, and its `play` runs, in the Chromium
+  nixpkgs builds; `just check` includes it.
+
 ## Tests
 
 - Vitest + Testing Library + happy-dom, colocated as `*.test.ts(x)`.

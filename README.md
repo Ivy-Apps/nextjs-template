@@ -8,7 +8,7 @@ the AI era.
 - shadcn/ui on Base UI, light and dark themes via next-themes
 - next-intl with English (default) and Bulgarian
 - Architecture enforced by [Deslop](https://deslop.dev), Biome for lint and
-  format, Vitest + fast-check, Playwright
+  format, Vitest + fast-check, Playwright, Storybook stories run as tests
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the layers and patterns.
 

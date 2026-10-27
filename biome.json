@@ -12,6 +12,7 @@
       "!node_modules",
       "!.next",
       "!next-env.d.ts",
+      "!pnpm-lock.yaml",
       "!playwright-report",
       "!test-results"
     ]

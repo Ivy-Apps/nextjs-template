@@ -30,8 +30,17 @@ arch:
 explore:
     pnpm deslop explore .
 
+# Unit and property tests in happy-dom.
 test:
-    pnpm vitest run
+    pnpm vitest run --project unit
+
+# Renders every Storybook story, and runs its play function, in Chromium.
+stories:
+    pnpm vitest run --project storybook
+
+# Serve Storybook on http://localhost:3006.
+storybook: install
+    pnpm storybook dev --host 0.0.0.0 --port 3006 --no-open
 
 build:
     pnpm next build
@@ -41,4 +50,4 @@ e2e:
     pnpm playwright test
 
 # Everything CI runs, each step once.
-check: install lint typecheck arch test build e2e
+check: install lint typecheck arch test stories build e2e

@@ -17,5 +17,7 @@ Storybook stories render) and a ViewModel (`{ state, onEvent }`). Deslop (`just 
 layering.
 
 Work inside the Nix dev shell: `nix develop -c just <recipe>`. `just check`
-runs everything CI runs (Biome, tsc, Deslop, Vitest, `next build`,
-Playwright).
+runs everything CI runs (Biome, tsc, Deslop, Vitest, Storybook stories,
+`next build`, Playwright). Give each new View a `*.stories.tsx` with one story
+per `UiState` variant (see "Stories" in `docs/ARCHITECTURE.md`); `just
+storybook` serves them on port 3006 and `just stories` tests them.
