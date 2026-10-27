@@ -159,10 +159,18 @@ function draftTitle(draft: string): Option.Option<TodoTitle> {
   return Schema.decodeUnknownOption(TodoTitle)(draft.trim());
 }
 
+/**
+ * Local ids only tell apart the todos this page has added, so a counter is
+ * enough. Not crypto.randomUUID: browsers expose it only in secure contexts,
+ * which plain http on a LAN host is not.
+ */
+let localTodoCount = 0;
+
 function localTodo(title: TodoTitle): LocalTodo {
+  localTodoCount += 1;
   return {
     _tag: "Local",
-    id: LocalTodoId.make(crypto.randomUUID()),
+    id: LocalTodoId.make(`local-${localTodoCount}`),
     title,
     completed: false,
   };

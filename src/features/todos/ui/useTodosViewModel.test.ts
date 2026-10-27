@@ -8,7 +8,7 @@ import {
   testQueryClient,
 } from "@test/renderWithProviders";
 import { act, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ProxyHttpClient } from "@/data/http/ProxyHttpClient";
 import { type Todo, TodoId, TodoTitle } from "@/features/todos/data/Todo";
 import { todosQuery } from "@/features/todos/ui/todosQuery";
@@ -71,6 +71,39 @@ describe("useTodosViewModel", () => {
     });
     expect(rest).toStrictEqual(MY_TODOS);
     expect(result.current.state).toMatchObject({ draft: "", alert: "None" });
+  });
+
+  it("adds a todo over plain http, where crypto has no randomUUID", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+    const secureCrypto = globalThis.crypto;
+    vi.stubGlobal("crypto", {
+      getRandomValues: secureCrypto.getRandomValues.bind(secureCrypto),
+      subtle: secureCrypto.subtle,
+    });
+
+    act(() =>
+      result.current.onEvent({ _tag: "ChangeDraft", value: "Call mom" }),
+    );
+    act(() => result.current.onEvent({ _tag: "AddTodo" }));
+    await settled(queryClient);
+
+    expect(todosOf(result.current.state)[0]).toMatchObject({
+      _tag: "Local",
+      title: "Call mom",
+    });
+  });
+
+  it("gives every added todo its own id", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+
+    for (const value of ["Call mom", "Call dad"]) {
+      act(() => result.current.onEvent({ _tag: "ChangeDraft", value }));
+      act(() => result.current.onEvent({ _tag: "AddTodo" }));
+    }
+    await settled(queryClient);
+
+    const [second, first] = todosOf(result.current.state);
+    expect(second?.id).not.toBe(first?.id);
   });
 
   it("ignores a blank todo", async () => {
