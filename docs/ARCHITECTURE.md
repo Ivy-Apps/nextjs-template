@@ -116,11 +116,12 @@ browser is a `LocalTodo`: its later toggles and deletes stay in the browser
 
 ## Screens (MVI)
 
-Each screen is three pieces in its feature's `ui/`:
+Each screen is a Container, a View and a ViewModel in its feature's `ui/`:
 
 ```
 page.tsx (server, in src/app)       # prefetch, then render the Container
-<Screen>Container.tsx (client)      # calls the ViewModel, renders pure components
+<Screen>Container.tsx (client)      # glue: calls the ViewModel, renders the View
+<Screen>View.tsx                    # pure: ({ state, onEvent }) => JSX
 use<Screen>ViewModel.ts             # returns { state, onEvent }
 use<Screen>ViewModel.types.ts       # UiState sum type, UiEvent union
 ```
@@ -137,9 +138,14 @@ export type UiEvent =
   | { _tag: "ToggleTodo"; id: TodoId };
 ```
 
-The ViewModel runs effects through TanStack Query and keeps local UI state in
-a reducer. The Container pattern-matches on `state` and wires `onEvent` into
-pure presentational components: props in, callbacks out.
+- The ViewModel runs effects through TanStack Query and keeps local UI state
+  in a reducer.
+- The Container holds no markup: it calls the ViewModel hook and renders
+  `<ScreenView state={state} onEvent={onEvent} />`.
+- The View pattern-matches on `state` and wires `onEvent` into pure
+  presentational components: props in, callbacks out. It calls no ViewModel,
+  query or router hook (`useTranslations` and `useId` are fine), so any
+  `UiState` fixture renders it. Views are what Storybook stories render.
 
 ## Tests
 

@@ -11,7 +11,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Project
 
 Read `docs/ARCHITECTURE.md` before writing code: it defines the layers, the
-MVI screen pattern and where each file goes. Deslop (`just arch`) enforces the
+MVI screen pattern and where each file goes. A screen is a Container (calls
+the ViewModel, renders the View), a pure View (`({ state, onEvent })`, what
+Storybook stories render) and a ViewModel (`{ state, onEvent }`). Deslop (`just arch`) enforces the
 layering.
 
 Work inside the Nix dev shell: `nix develop -c just <recipe>`. `just check`
