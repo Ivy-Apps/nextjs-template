@@ -13,4 +13,24 @@ export const bg: Messages = {
   theme: {
     toggle: "Смяна на темата",
   },
+  login: {
+    title: "Вход",
+    description: "Влезте, за да продължите.",
+    username: "Потребителско име",
+    password: "Парола",
+    submit: "Вход",
+    submitting: "Влизане...",
+    demoAccount: "Демо профил: emilys / emilyspass",
+    errors: {
+      InvalidRequest: "Въведете потребителско име и парола.",
+      InvalidCredentials: "Грешно потребителско име или парола.",
+      BackendUnavailable: "Сървърът не е достъпен. Опитайте отново по-късно.",
+    },
+  },
+  header: {
+    logout: "Изход",
+    loggingOut: "Излизане...",
+    logoutFailed: "Неуспешен изход. Опитайте отново.",
+    userFailed: "Профилът не можа да се зареди.",
+  },
 };
