@@ -26,6 +26,10 @@ typecheck:
 arch:
     pnpm deslop check .
 
+# Draw the module graph to deslop/diagram/index.html.
+explore:
+    pnpm deslop explore .
+
 test:
     pnpm vitest run
 

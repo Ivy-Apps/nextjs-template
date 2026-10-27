@@ -3,6 +3,11 @@
 Android-style layers inside isolated features. Deslop enforces the rules in
 `deslop/rules/` on every `just check`.
 
+`just explore` draws the module graph to `deslop/diagram/index.html`. CI
+publishes it to GitHub Pages (`explore.yml`): `main` at the site root and each
+same-repository PR at `pr/<n>/`, linked from the PR as a deployment. It is
+informational and never blocks a merge.
+
 ## Layers
 
 ```
