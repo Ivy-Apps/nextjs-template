@@ -1,26 +1,22 @@
-import { getTranslations } from "next-intl/server";
+import { SessionHttpClient } from "@/data/http/SessionHttpClient";
+import { TodosContainer } from "@/features/todos/ui/TodosContainer";
+import { todosQuery } from "@/features/todos/ui/todosQuery";
 import { resolveRequestLocale } from "@/lib/i18n/resolveRequestLocale";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/ui/design-system/components/card";
+import { PrefetchBoundary } from "@/lib/query/PrefetchBoundary";
 
-export default async function HomePage({ params }: PageProps<"/[locale]">) {
+/** The signed-in user's todos, on the first paint. */
+export default async function TodosPage({ params }: PageProps<"/[locale]">) {
   await resolveRequestLocale(params);
-  const t = await getTranslations("home");
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>
-            <h1>{t("title")}</h1>
-          </CardTitle>
-          <CardDescription>{t("description")}</CardDescription>
-        </CardHeader>
-      </Card>
+    <main className="flex flex-1 flex-col items-center p-4">
+      <PrefetchBoundary
+        prefetch={(queryClient) =>
+          queryClient.prefetchQuery(todosQuery(SessionHttpClient))
+        }
+      >
+        <TodosContainer />
+      </PrefetchBoundary>
     </main>
   );
 }

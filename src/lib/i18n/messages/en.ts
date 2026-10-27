@@ -3,10 +3,20 @@ export const en = {
     title: "Next.js Template",
     description: "A pragmatic Next.js starter with strong guardrails.",
   },
-  home: {
-    title: "Next.js Template",
-    description:
-      "A strict, layered starter: Effect, MVI screens and architecture rules enforced by Deslop.",
+  todos: {
+    title: "Todos",
+    newTodo: "New todo",
+    placeholder: "What needs doing?",
+    add: "Add",
+    delete: "Delete {title}",
+    empty: "Nothing to do yet. Add your first todo above.",
+    loading: "Loading your todos...",
+    loadFailed: "Could not load your todos. Reload the page to try again.",
+    alerts: {
+      AddFailed: "Could not add the todo. Try again.",
+      ToggleFailed: "Could not update the todo. Try again.",
+      DeleteFailed: "Could not delete the todo. Try again.",
+    },
   },
   theme: {
     toggle: "Toggle theme",
