@@ -14,14 +14,22 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the layers and patterns.
 
 ## Getting started
 
-Requires Nix with flakes.
+Requires Nix with flakes. Every tool (Node, pnpm, just, the Playwright
+browsers) comes from the dev shell:
 
 ```bash
+nix develop                 # enter the dev shell, or prefix each command:
 nix develop -c just dev     # http://localhost:3000
 nix develop -c just check   # everything CI runs
 ```
 
 Other recipes: `just --list`.
 
-Set `BE_URL` to the backend's base URL for server-side data access
-(default `https://dummyjson.com`; demo login `emilys` / `emilyspass`).
+The sample app is a todo list on [DummyJSON](https://dummyjson.com). Log in
+with the demo account `emilys` / `emilyspass`. DummyJSON stores no writes, so
+added, toggled and deleted todos last until the next reload.
+
+`BE_URL` is the backend's base URL (default `https://dummyjson.com`). Only the
+server reads it, at request time, so it can change without a rebuild. The
+Playwright run points it at an in-memory fake DummyJSON, so e2e needs no
+network.

@@ -58,20 +58,45 @@ Features never import each other. Code two features need moves to
 
 ## BFF and session
 
-The backend only takes Bearer tokens; the browser only holds cookies.
+The backend only takes Bearer tokens; the browser only holds cookies. The
+Next.js server is a backend-for-frontend (BFF) between them, so tokens never
+reach client JS.
 
-- `POST /api/auth/login` (`Credentials` -> `User` or a `LoginFailure`) sets
-  the `access_token` and `refresh_token` cookies: httpOnly, Secure,
-  SameSite=Lax. `POST /api/auth/logout` clears them. Tokens never reach client
-  JS.
-- `/proxy/<path>` forwards any method to `BE_URL/<path>`, swapping the
-  browser's cookies for the Bearer. On a backend 401 it renews once and
-  retries; a rejected refresh token answers 401 and clears the cookies.
-- `src/proxy.ts` redirects signed-out visitors to the localized login page
-  with a `returnTo` path (`@/types/ReturnPath`) and renews a missing, expired
-  or near-expiry access token before the page renders.
-- `@/data/session` holds the logic: `resolveSession` decides, from the cookies
-  and the token's `exp`, whether to renew.
+1. **Login.** `POST /api/auth/login` (`Credentials` -> `User` or a
+   `LoginFailure`) logs in on the backend and sets the `access_token` and
+   `refresh_token` cookies: httpOnly, Secure, SameSite=Lax. The backend's own
+   cookies are not forwarded. The login form then replaces the URL with its
+   `returnTo` path.
+2. **Page guard and renewal.** `src/proxy.ts` runs before every page. It
+   redirects a signed-out visitor to the localized login page with a
+   `returnTo` path (`@/types/ReturnPath`), sends a signed-in visitor on the
+   login page on to that path, and renews a missing, expired or near-expiry
+   access token with the refresh token before the page renders. The renewed
+   cookies reach both the page's request and the browser.
+3. **Server prefetch.** A page prefetches through `SessionHttpClient`, which
+   sends the access token from the cookies as a Bearer. `PrefetchBoundary`
+   dehydrates the query cache into the HTML, so the first paint has the data
+   and the client starts from a warm cache.
+4. **Pass-through.** In the browser, `ProxyHttpClient` sends every request to
+   `/proxy/<path>`, which forwards any method and query to `BE_URL/<path>`,
+   swapping the browser's cookies for the Bearer. On a backend 401 it renews
+   once and retries; a rejected refresh token answers 401 and clears the
+   cookies. Paths that would leave `BE_URL` are rejected.
+5. **Logout.** `POST /api/auth/logout` clears both cookies, and the header
+   replaces the URL with the login page.
+
+`@/data/session` holds the logic: `resolveSession` decides, from the cookies
+and the token's `exp`, whether to renew; `sessionCookies` reads and writes the
+cookies.
+
+### Todos
+
+The signed-in home page prefetches the user's todos on the server.
+`useTodosViewModel` adds, toggles and deletes optimistically: the change shows
+at once and rolls back, with a localized alert, when the backend refuses it.
+DummyJSON acknowledges an added todo but stores nothing, so a todo added in the
+browser is a `LocalTodo`: its later toggles and deletes stay in the browser
+(`saveTodo`), since the backend would answer 404 for its id.
 
 ## Screens (MVI)
 
@@ -105,4 +130,7 @@ pure presentational components: props in, callbacks out.
 - Vitest + Testing Library + happy-dom, colocated as `*.test.ts(x)`.
 - Property tests with `@fast-check/vitest` for domain logic and codecs.
 - Fakes for what we do not own (the backend, the clock) live in `test/`.
-- Playwright specs in `e2e/` run against the production build.
+- Playwright specs in `e2e/` run against the production build. Global setup
+  (`e2e/fakeBackendServer.ts`) serves the same in-memory DummyJSON
+  (`test/fakeBackend.ts`) over HTTP on port 3078 and the app gets it as
+  `BE_URL`, so e2e is deterministic and offline.
