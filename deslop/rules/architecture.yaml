@@ -1,0 +1,74 @@
+id: architecture
+name: Architecture
+description: >-
+  Android-style layers (ui -> domain -> data -> types) inside isolated
+  features. See docs/ARCHITECTURE.md.
+rules:
+  - id: features-isolated
+    description: >-
+      Features are independent slices. A cross-feature import couples two
+      slices and makes either one impossible to move or delete alone.
+    target: "@/features/{{feature-name}}/**"
+    exclude:
+      - "@/features/shared/**"
+    forbids:
+      - import: "@/features/**"
+    allows:
+      - import: "@/features/{{feature-name}}/**"
+      - import: "{{TARGET_DIR}}/..*/shared/**"
+    fix: >-
+      Move the code both features need to @/features/shared or to a top-level
+      layer (@/types, @/data, @/domain, @/ui) and import it from there.
+
+  - id: domain-is-ui-free
+    description: >-
+      Domain holds business logic. It must not depend on UI or React, so it
+      stays testable without a renderer and reusable on the server.
+    target: "@/**/domain/**"
+    forbids: &ui-and-react
+      - import: "@/ui/**"
+      - import: "@/features/*/ui/**"
+      - import: "@/app/**"
+      - import: "react"
+        transitive: true
+      - import: "react/**"
+        transitive: true
+      - import: "react-dom"
+        transitive: true
+      - import: "react-dom/**"
+        transitive: true
+    fix: &keep-ui-out >-
+      Move the React or UI code into a ui layer and pass plain data or Effects
+      across the boundary.
+
+  - id: data-is-ui-free
+    description: >-
+      Data holds IO behind repositories. It must not depend on UI or React, so
+      it stays testable without a renderer and reusable on the server.
+    target: "@/**/data/**"
+    forbids: *ui-and-react
+    fix: *keep-ui-out
+
+  - id: data-does-not-import-domain
+    description: >-
+      Data sits below domain: domain calls repositories, never the other way
+      round. A data -> domain import creates a layering cycle.
+    target: "@/**/data/**"
+    forbids:
+      - import: "@/domain/**"
+      - import: "@/features/*/domain/**"
+    fix: >-
+      Move the type to @/types or the logic into the data layer itself.
+
+  - id: types-are-leaves
+    description: >-
+      @/types holds the shared domain models, the bottom layer. It imports no
+      other layer, so every layer can depend on it without cycles.
+    target: "@/types/**"
+    forbids:
+      - import: "@/**"
+    allows:
+      - import: "@/types/**"
+    fix: >-
+      Keep @/types to plain models and schemas; move the logic that needs other
+      layers into data or domain.
