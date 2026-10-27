@@ -1,5 +1,8 @@
 # nextjs-template
 
+> [!WARNING]
+> This template is experimental and under development. It is not production ready. Use at your own risk.
+
 A pragmatic Next.js template with strong guardrails and good architecture for
 the AI era.
 
