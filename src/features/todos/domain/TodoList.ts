@@ -1,10 +1,11 @@
 import type { Todo } from "@/features/todos/data/Todo";
 
 /*
- * Pure updates of a list of todos, as the user sees it. Each one is the
- * inverse of another, so an optimistic change can be rolled back without
- * undoing the changes made since: `insert` undoes `remove` and back, and
- * `setCompleted` undoes itself.
+ * Pure updates of a list of todos, as the user sees it. An optimistic add or
+ * toggle rolls back by its inverse, so the changes made since survive:
+ * `remove` undoes `insert`, and `setCompleted` undoes itself. A delete is not
+ * applied optimistically: the todo is hidden while the delete is pending and
+ * removed only once the backend confirms.
  */
 
 export type TodoList = ReadonlyArray<Todo>;
@@ -12,18 +13,10 @@ export type TodoList = ReadonlyArray<Todo>;
 /** Which todo: a saved and a local todo never share a ref. */
 export type TodoRef = Pick<Todo, "_tag" | "id">;
 
-/**
- * Puts `todo` at `index`, clamped to the list, so a rollback still lands when
- * the list has shrunk since.
- */
+/** Puts `todo` at `index`, clamped to the list. */
 export function insert(list: TodoList, index: number, todo: Todo): TodoList {
   const at = Math.min(Math.max(index, 0), list.length);
   return [...list.slice(0, at), todo, ...list.slice(at)];
-}
-
-/** Where `ref` sits in the list, or -1 when it is not there. */
-export function indexOf(list: TodoList, ref: TodoRef): number {
-  return list.findIndex((todo) => isTodo(todo, ref));
 }
 
 export function remove(list: TodoList, ref: TodoRef): TodoList {

@@ -2,7 +2,6 @@ import { fc, test } from "@fast-check/vitest";
 import { todo, todoList } from "@test/todoArbitraries";
 import { describe, expect } from "vitest";
 import {
-  indexOf,
   insert,
   remove,
   setCompleted,
@@ -19,7 +18,12 @@ const listWithPick = todoList
 /** A list and a todo that is not in it. */
 const listWithNewcomer = fc
   .tuple(todoList, todo)
-  .filter(([list, newcomer]) => indexOf(list, newcomer) === -1);
+  .filter(
+    ([list, newcomer]) =>
+      !list.some(
+        (item) => item._tag === newcomer._tag && item.id === newcomer.id,
+      ),
+  );
 
 describe("insert", () => {
   test.prop([listWithNewcomer, fc.integer({ min: -5, max: 50 })])(
@@ -30,22 +34,6 @@ describe("insert", () => {
       const at = Math.min(Math.max(index, 0), list.length);
       expect(result[at]).toStrictEqual(newcomer);
       expect(without(result, at)).toStrictEqual(list);
-    },
-  );
-});
-
-describe("indexOf", () => {
-  test.prop([listWithPick])(
-    "finds the todo's position",
-    ({ list, picked, index }) => {
-      expect(indexOf(list, picked)).toBe(index);
-    },
-  );
-
-  test.prop([listWithNewcomer])(
-    "is -1 for a todo not in the list",
-    ([list, newcomer]) => {
-      expect(indexOf(list, newcomer)).toBe(-1);
     },
   );
 });
@@ -65,10 +53,12 @@ describe("remove", () => {
     },
   );
 
-  test.prop([listWithPick])(
-    "is undone by inserting the todo back where it was",
-    ({ list, picked, index }) => {
-      expect(insert(remove(list, picked), index, picked)).toStrictEqual(list);
+  test.prop([listWithNewcomer, fc.integer({ min: -5, max: 50 })])(
+    "undoes inserting the todo",
+    ([list, newcomer], index) => {
+      expect(remove(insert(list, index, newcomer), newcomer)).toStrictEqual(
+        list,
+      );
     },
   );
 });
