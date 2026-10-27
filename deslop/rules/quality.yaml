@@ -1,0 +1,16 @@
+id: quality
+name: Quality
+description: Keeps test support out of shipped code.
+rules:
+  - id: no-test-code-in-production
+    description: >-
+      @test holds fakes and fixtures. Shipped code that imports it bundles
+      test doubles into the app.
+    target: "@/**"
+    exclude:
+      - "**/*.test"
+    forbids:
+      - import: "@test/**"
+    fix: >-
+      Import @test only from *.test.ts(x) files; move anything production
+      needs into src.
