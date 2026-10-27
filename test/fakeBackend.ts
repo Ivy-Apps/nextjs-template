@@ -11,13 +11,18 @@ import { afterEach, beforeEach, vi } from "vitest";
  * - `POST /auth/refresh` {refreshToken, expiresInMins?}: 403 on an unknown or
  *   expired refresh token, else a new token pair.
  * - `GET /auth/me`: 401 without a live Bearer, else the user.
- * - `/auth/<path>`: 401 without a live Bearer, else the static route `/<path>`.
- * - `<path>`: the static route, matched on the pathname; 404 otherwise.
+ * - `/auth/<path>`: 401 without a live Bearer, else `/<path>`.
+ * - `GET /todos/user/{id}`: that user's todos as `{todos, total, skip, limit}`.
+ * - `POST /todos/add` {todo, completed, userId}: 400 on a malformed body, else
+ *   201 with the todo under a made-up id. Like DummyJSON, it stores nothing.
+ * - `PUT /todos/{id}` {completed} and `DELETE /todos/{id}`: 404 for an
+ *   unknown id, else the changed todo, without storing the change.
+ * - `<path>`: the static route, matched on the pathname; 404 otherwise. A
+ *   static route also overrides a todos endpoint on the same pathname.
  */
-export function fakeBackend(
-  options: { routes?: Record<string, Route> } = {},
-): FakeBackend {
+export function fakeBackend(options: FakeBackendOptions = {}): FakeBackend {
   const routes = options.routes ?? {};
+  const todos = options.todos ?? DEMO_TODOS;
   const issued = new Map<string, Token>();
   const requests: Array<ReceivedRequest> = [];
 
@@ -64,7 +69,61 @@ export function fakeBackend(
         );
       }
       if (pathname === "/auth/me") return Response.json(DEMO_USER);
-      return serve(routes, pathname.slice("/auth".length));
+      return resource(request.method, pathname.slice("/auth".length), body);
+    }
+    return resource(request.method, pathname, body);
+  };
+  const resource = (
+    method: string,
+    pathname: string,
+    body: Record<string, unknown>,
+  ): Response => {
+    const [, collection, first, second] = pathname.split("/");
+    if (collection !== "todos" || pathname in routes) {
+      return serve(routes, pathname);
+    }
+    if (method === "GET" && first === "user") {
+      const owned = todos.filter((todo) => String(todo.userId) === second);
+      return Response.json({
+        todos: owned,
+        total: owned.length,
+        skip: 0,
+        limit: owned.length,
+      });
+    }
+    if (method === "POST" && first === "add") {
+      const { todo, completed, userId } = body;
+      return typeof todo === "string" &&
+        todo !== "" &&
+        typeof completed === "boolean" &&
+        typeof userId === "number"
+        ? Response.json(
+            { id: todos.length + 1, todo, completed, userId },
+            { status: 201 },
+          )
+        : Response.json({ message: "Invalid todo" }, { status: 400 });
+    }
+    const found = todos.find((todo) => String(todo.id) === first);
+    if (found === undefined) {
+      return Response.json(
+        { message: `Todo with id '${first}' not found` },
+        { status: 404 },
+      );
+    }
+    if (method === "PUT") {
+      return Response.json({
+        ...found,
+        ...(typeof body.completed === "boolean"
+          ? { completed: body.completed }
+          : {}),
+      });
+    }
+    if (method === "DELETE") {
+      return Response.json({
+        ...found,
+        isDeleted: true,
+        deletedOn: new Date().toISOString(),
+      });
     }
     return serve(routes, pathname);
   };
@@ -93,9 +152,9 @@ export const FAKE_BE_URL = "https://be.test";
  * test, for code that reaches the backend through the app's own layers.
  * Read the current one through the returned ref.
  */
-export function installFakeBackend(
-  options: { routes?: Record<string, Route> } = {},
-): { readonly current: FakeBackend } {
+export function installFakeBackend(options: FakeBackendOptions = {}): {
+  readonly current: FakeBackend;
+} {
   const ref = { current: fakeBackend(options) };
   const delegate: typeof fetch = (input, init) =>
     ref.current.fetch(input, init);
@@ -120,7 +179,22 @@ export type FakeBackend = {
   readonly login: () => { accessToken: string; refreshToken: string };
 };
 
+export type FakeBackendOptions = {
+  /** Static routes by pathname; they override the todos endpoints. */
+  routes?: Record<string, Route>;
+  /** Every user's todos; `DEMO_TODOS` by default. */
+  todos?: ReadonlyArray<FakeTodo>;
+};
+
 export type Route = { status: number; body: unknown };
+
+/** A todo in DummyJSON's shape. */
+export type FakeTodo = {
+  readonly id: number;
+  readonly todo: string;
+  readonly completed: boolean;
+  readonly userId: number;
+};
 
 export type ReceivedRequest = {
   readonly method: string;
@@ -140,6 +214,19 @@ export const DEMO_USER = {
   gender: "female",
   image: "https://dummyjson.com/icon/emilys/128",
 };
+
+/** The demo user's todos, then another user's. */
+export const DEMO_TODOS: ReadonlyArray<FakeTodo> = [
+  { id: 1, todo: "Buy milk", completed: false, userId: DEMO_USER.id },
+  { id: 2, todo: "Water the plants", completed: true, userId: DEMO_USER.id },
+  {
+    id: 3,
+    todo: "Write the quarterly report for the infrastructure migration and send it to everyone involved",
+    completed: false,
+    userId: DEMO_USER.id,
+  },
+  { id: 4, todo: "Someone else's todo", completed: false, userId: 2 },
+];
 
 /** A JWT-shaped token with the given payload and an unverifiable signature. */
 export function fakeJwt(payload: object, signature = "signature"): string {

@@ -1,8 +1,8 @@
 import {
   FAKE_BE_URL,
   type FakeBackend,
+  type FakeBackendOptions,
   installFakeBackend,
-  type Route,
 } from "@test/fakeBackend";
 import { NextRequest, type NextResponse } from "next/server";
 import { beforeEach, vi } from "vitest";
@@ -20,9 +20,7 @@ import {
  * and the handlers reach a fake backend at `BE_URL`. Any other origin is
  * unreachable. Install it at the top of a test file, like `installFakeBackend`.
  */
-export function installFakeBff(
-  options: { routes?: Record<string, Route> } = {},
-) {
+export function installFakeBff(options: FakeBackendOptions = {}) {
   const backend = installFakeBackend(options);
   const jar = new Map<string, string>();
   let network: Network = "Online";
