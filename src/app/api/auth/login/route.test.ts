@@ -1,10 +1,6 @@
 // @vitest-environment node
-import {
-  DEMO_PASSWORD,
-  DEMO_USERNAME,
-  FAKE_BE_URL,
-  installFakeBackend,
-} from "@test/fakeBackend";
+import { DEMO_PASSWORD, DEMO_USERNAME, FAKE_BE_URL } from "@test/fakeBackend";
+import { installFakeBackend } from "@test/installFakeBackend";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/auth/login/route";

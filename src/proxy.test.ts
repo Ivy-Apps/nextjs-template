@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { fakeJwt, installFakeBackend } from "@test/fakeBackend";
+import { fakeJwt } from "@test/fakeBackend";
+import { installFakeBackend } from "@test/installFakeBackend";
 import { getRedirectUrl } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

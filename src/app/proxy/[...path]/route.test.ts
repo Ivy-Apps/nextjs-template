@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { FAKE_BE_URL, fakeJwt, installFakeBackend } from "@test/fakeBackend";
+import { FAKE_BE_URL, fakeJwt } from "@test/fakeBackend";
+import { installFakeBackend } from "@test/installFakeBackend";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/proxy/[...path]/route";

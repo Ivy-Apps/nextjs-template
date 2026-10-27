@@ -2,8 +2,8 @@ import {
   FAKE_BE_URL,
   type FakeBackend,
   type FakeBackendOptions,
-  installFakeBackend,
 } from "@test/fakeBackend";
+import { installFakeBackend } from "@test/installFakeBackend";
 import { NextRequest, type NextResponse } from "next/server";
 import { beforeEach, vi } from "vitest";
 import { POST as logIn } from "@/app/api/auth/login/route";
