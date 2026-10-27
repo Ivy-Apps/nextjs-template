@@ -2,7 +2,7 @@
 import { DEMO_PASSWORD, DEMO_USERNAME, FAKE_BE_URL } from "@test/fakeBackend";
 import { installFakeBackend } from "@test/installFakeBackend";
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/auth/login/route";
 
 const backend = installFakeBackend();
@@ -17,7 +17,7 @@ function postLogin(body: unknown) {
 }
 
 describe("POST /api/auth/login", () => {
-  it("answers the user and sets the tokens as httpOnly session cookies", async () => {
+  it("answers the user and sets the tokens as httpOnly, Secure session cookies", async () => {
     const response = await postLogin({
       username: DEMO_USERNAME,
       password: DEMO_PASSWORD,
@@ -39,6 +39,22 @@ describe("POST /api/auth/login", () => {
         sameSite: "lax",
         path: "/",
         value: expect.stringMatching(/^[\w-]+\.[\w-]+\.[\w-]+$/),
+      });
+    }
+  });
+
+  it("drops Secure under next dev, so the cookies work on http://localhost", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+
+    const response = await postLogin({
+      username: DEMO_USERNAME,
+      password: DEMO_PASSWORD,
+    });
+
+    for (const name of ["access_token", "refresh_token"]) {
+      expect(response.cookies.get(name)).toMatchObject({
+        httpOnly: true,
+        secure: false,
       });
     }
   });

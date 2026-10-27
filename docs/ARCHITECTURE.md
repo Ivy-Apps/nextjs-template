@@ -15,7 +15,7 @@ ui -> domain -> data -> types
 | `data`   | IO: data sources and repositories returning `Effect<A, E, R>`, provided by Layers | `types`                   |
 | `domain` | Use-cases combining repositories (optional)                                       | `data`, `types`           |
 | `ui`     | Screens and components                                                            | `domain`, `data`, `types` |
-| `lib`    | Third-party integrations: i18n, TanStack Query, theme                             |                           |
+| `lib`    | Third-party integrations: i18n, TanStack Query, theme; typed env                  |                           |
 - `domain` is optional: `ui` may call a `data` repository directly.
 - `domain` and `data` never import `ui`, `app` or React.
 - `data` never imports `domain`.
@@ -28,11 +28,12 @@ src/
   app/              # Next.js routes only: pages, layouts, BFF route handlers
     [locale]/       # localized pages
   proxy.ts          # Next 16 proxy: i18n routing, page guards, session renew
+  instrumentation.ts # decodes the server env at start, failing fast
   features/<f>/     # one slice per feature, each with ui/, domain/, data/
   features/shared/  # code several features share
   types/ data/ domain/ ui/   # feature-agnostic layers
   ui/design-system/ # shadcn/ui (Base UI) primitives and the cn() helper
-  lib/              # i18n, query client, theme
+  lib/              # i18n, query client, theme, env
 test/               # fakes, fixtures, arbitraries; never imported by src
 e2e/                # Playwright specs
 ```
@@ -44,6 +45,10 @@ Features never import each other. Code two features need moves to
 
 - Repositories return `Effect<A, E, R>` with typed errors and decode responses
   with Effect Schema at the boundary.
+- `@/lib/env/serverEnv` decodes the server's environment (`BE_URL`,
+  `NODE_ENV`) with Effect Schema and throws a readable error naming every bad
+  variable. `@/lib/env/clientEnv` holds the `NEXT_PUBLIC_*` ones, each read
+  as a literal `process.env.NEXT_PUBLIC_X` so Next can inline it.
 - `@/data/http/BackendHttpClient` is the server-side `HttpClient` Layer: it
   resolves paths against `BE_URL` and fails on non-2xx responses.
 - `@/data/http/SessionHttpClient` is the same client carrying the visitor's
@@ -64,7 +69,8 @@ reach client JS.
 
 1. **Login.** `POST /api/auth/login` (`Credentials` -> `User` or a
    `LoginFailure`) logs in on the backend and sets the `access_token` and
-   `refresh_token` cookies: httpOnly, Secure, SameSite=Lax. The backend's own
+   `refresh_token` cookies: httpOnly, Secure (except under `next dev`, so
+   localhost works over http), SameSite=Lax. The backend's own
    cookies are not forwarded. The login form then drops the query cache, so
    no data of the last session survives, and replaces the URL with its
    `returnTo` path.

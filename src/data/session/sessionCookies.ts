@@ -7,6 +7,7 @@ import {
   type TokenPair,
   tokenExpiry,
 } from "@/data/session/Tokens";
+import { serverEnv } from "@/lib/env/serverEnv";
 
 export const ACCESS_TOKEN_COOKIE = "access_token";
 export const REFRESH_TOKEN_COOKIE = "refresh_token";
@@ -48,18 +49,21 @@ export function writeSessionUpdate(
       setTokenCookie(cookies, REFRESH_TOKEN_COOKIE, update.tokens.refreshToken);
       return;
     case "Ended":
-      cookies.set(ACCESS_TOKEN_COOKIE, "", { ...COOKIE_OPTIONS, maxAge: 0 });
-      cookies.set(REFRESH_TOKEN_COOKIE, "", { ...COOKIE_OPTIONS, maxAge: 0 });
+      cookies.set(ACCESS_TOKEN_COOKIE, "", { ...cookieOptions(), maxAge: 0 });
+      cookies.set(REFRESH_TOKEN_COOKIE, "", { ...cookieOptions(), maxAge: 0 });
       return;
   }
 }
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "lax",
-  path: "/",
-} as const;
+/** Secure everywhere but `next dev`, so the site works on http://localhost. */
+function cookieOptions() {
+  return {
+    httpOnly: true,
+    secure: serverEnv().NODE_ENV !== "development",
+    sameSite: "lax",
+    path: "/",
+  } as const;
+}
 
 function readCookie<A>(
   cookies: CookieReader,
@@ -78,7 +82,7 @@ function setTokenCookie(
   token: string,
 ): void {
   cookies.set(name, token, {
-    ...COOKIE_OPTIONS,
+    ...cookieOptions(),
     expires: Option.getOrUndefined(tokenExpiry(token)),
   });
 }

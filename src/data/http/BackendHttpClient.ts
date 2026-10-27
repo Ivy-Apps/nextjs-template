@@ -1,5 +1,6 @@
-import { Config, Effect, Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
+import { serverEnv } from "@/lib/env/serverEnv";
 
 /**
  * Server-side HttpClient for the backend: every request is resolved against
@@ -9,9 +10,7 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
 export const BackendHttpClient = Layer.effect(
   HttpClient.HttpClient,
   Effect.gen(function* () {
-    const baseUrl = yield* Config.URL("BE_URL").pipe(
-      Config.withDefault(new URL("https://dummyjson.com")),
-    );
+    const baseUrl = serverEnv().BE_URL;
     const client = yield* HttpClient.HttpClient;
     return client.pipe(
       HttpClient.mapRequest(HttpClientRequest.prependUrl(baseUrl.href)),

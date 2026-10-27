@@ -1,7 +1,7 @@
 import { fakeBackend } from "@test/fakeBackend";
-import { ConfigProvider, Effect, Exit } from "effect";
+import { Effect, Exit } from "effect";
 import { FetchHttpClient, HttpClient } from "effect/http";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BackendHttpClient } from "@/data/http/BackendHttpClient";
 
 const backend = fakeBackend({
@@ -14,16 +14,19 @@ function runAgainstBackend<A, E>(
   return Effect.runPromiseExit(
     effect.pipe(
       Effect.provide(BackendHttpClient),
-      Effect.provideService(
-        ConfigProvider.ConfigProvider,
-        ConfigProvider.fromEnv({ env: { BE_URL: "https://be.test" } }),
-      ),
       Effect.provideService(FetchHttpClient.Fetch, backend.fetch),
     ),
   );
 }
 
 describe("BackendHttpClient", () => {
+  beforeEach(() => {
+    vi.stubEnv("BE_URL", "https://be.test");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("resolves request paths against BE_URL", async () => {
     const exit = await runAgainstBackend(
       HttpClient.get("/todos").pipe(Effect.flatMap((res) => res.json)),

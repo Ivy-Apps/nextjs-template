@@ -4,7 +4,7 @@ import { installFakeBackend } from "@test/installFakeBackend";
 import { installFrozenClock, MINUTE } from "@test/installFrozenClock";
 import { getRedirectUrl } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { proxy } from "@/proxy";
 
 const backend = installFakeBackend();
@@ -125,6 +125,19 @@ describe("proxy", () => {
       expect(response.headers.get("x-middleware-request-cookie")).toContain(
         `access_token=${renewed?.value}`,
       );
+    });
+
+    it("renews into a cookie without Secure under next dev", async () => {
+      vi.stubEnv("NODE_ENV", "development");
+      const tokens = backend.current.login();
+      clock.elapse(61 * MINUTE);
+
+      const response = await visit("/todos", session(tokens));
+
+      expect(response.cookies.get("access_token")).toMatchObject({
+        httpOnly: true,
+        secure: false,
+      });
     });
 
     it("renews when only the refresh token is left", async () => {
