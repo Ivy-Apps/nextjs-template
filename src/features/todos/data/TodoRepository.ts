@@ -1,10 +1,11 @@
-import { Effect, Schema } from "effect";
+import { Effect, Option, Schema } from "effect";
 import {
   HttpClient,
   type HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
 } from "effect/http";
+import { rejectedStatus } from "@/data/http/rejectedStatus";
 import {
   BackendFailure,
   currentUser,
@@ -98,9 +99,7 @@ function send(
 function todoFailure(
   error: HttpClientError.HttpClientError | Schema.SchemaError,
 ): TodoFailure {
-  return error._tag === "HttpClientError" &&
-    error.reason._tag === "StatusCodeError" &&
-    error.reason.response.status === 401
+  return Option.exists(rejectedStatus(error), (status) => status === 401)
     ? new SessionExpired()
     : new BackendFailure({ cause: error });
 }

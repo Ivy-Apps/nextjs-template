@@ -1,10 +1,11 @@
-import { Data, Effect, Schema } from "effect";
+import { Data, Effect, Option, Schema } from "effect";
 import {
   HttpClient,
   type HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
 } from "effect/http";
+import { rejectedStatus } from "@/data/http/rejectedStatus";
 import { type RefreshToken, TokenPair } from "@/data/session/Tokens";
 import type { Credentials } from "@/types/Auth";
 import { User } from "@/types/User";
@@ -102,17 +103,11 @@ function rejectedAs<E>(rejection: () => E) {
     >,
   ): Effect.Effect<A, E | BackendFailure, R> =>
     Effect.mapError(effect, (error) =>
-      isClientError(error) ? rejection() : new BackendFailure({ cause: error }),
+      Option.exists(
+        rejectedStatus(error),
+        (status) => status >= 400 && status < 500,
+      )
+        ? rejection()
+        : new BackendFailure({ cause: error }),
     );
-}
-
-function isClientError(
-  error: HttpClientError.HttpClientError | Schema.SchemaError,
-): boolean {
-  return (
-    error._tag === "HttpClientError" &&
-    error.reason._tag === "StatusCodeError" &&
-    error.reason.response.status >= 400 &&
-    error.reason.response.status < 500
-  );
 }

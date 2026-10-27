@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import type { HttpClient } from "effect/http";
-import type { Todo } from "@/features/todos/data/Todo";
+import type { Todo, TodoId } from "@/features/todos/data/Todo";
 import {
   deleteTodo,
   setCompleted,
@@ -13,24 +13,20 @@ import {
  * succeed.
  */
 
-export function saveCompleted(
-  todo: Todo,
-  completed: boolean,
-): Effect.Effect<void, TodoFailure, HttpClient.HttpClient> {
-  switch (todo._tag) {
-    case "Saved":
-      return setCompleted(todo.id, completed);
-    case "Local":
-      return Effect.void;
-  }
+type Save = Effect.Effect<void, TodoFailure, HttpClient.HttpClient>;
+
+export function saveCompleted(todo: Todo, completed: boolean): Save {
+  return whenSaved(todo, (id) => setCompleted(id, completed));
 }
 
-export function saveDeletion(
-  todo: Todo,
-): Effect.Effect<void, TodoFailure, HttpClient.HttpClient> {
+export function saveDeletion(todo: Todo): Save {
+  return whenSaved(todo, deleteTodo);
+}
+
+function whenSaved(todo: Todo, save: (id: TodoId) => Save): Save {
   switch (todo._tag) {
     case "Saved":
-      return deleteTodo(todo.id);
+      return save(todo.id);
     case "Local":
       return Effect.void;
   }

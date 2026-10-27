@@ -1,8 +1,8 @@
-import { dehydrate, hydrate } from "@tanstack/react-query";
-import { DEMO_USERNAME } from "@test/fakeBackend";
+import { DEMO_USER } from "@test/fakeBackend";
 import { installFakeBff } from "@test/fakeBff";
 import { fakeRouter } from "@test/fakeRouter";
 import {
+  prefetchedQueryClient,
   renderHookWithProviders,
   testQueryClient,
 } from "@test/renderWithProviders";
@@ -19,14 +19,8 @@ vi.mock(
 
 const bff = installFakeBff();
 
-const DEMO_USER = {
-  id: 1,
-  username: DEMO_USERNAME,
-  email: "emily.johnson@x.dummyjson.com",
-  firstName: "Emily",
-  lastName: "Johnson",
-  image: "https://dummyjson.com/icon/emilys/128",
-};
+// The user as the app decodes it: the backend's extra fields are dropped.
+const { gender: _, ...SIGNED_IN_USER } = DEMO_USER;
 
 describe("useHeaderViewModel", () => {
   it("shows the signed-in user", async () => {
@@ -36,7 +30,7 @@ describe("useHeaderViewModel", () => {
 
     await waitFor(() =>
       expect(result.current.state).toStrictEqual({
-        user: { _tag: "Loaded", user: DEMO_USER },
+        user: { _tag: "Loaded", user: SIGNED_IN_USER },
         logout: "Idle",
       }),
     );
@@ -44,17 +38,16 @@ describe("useHeaderViewModel", () => {
 
   it("renders the user prefetched on the server without loading", async () => {
     bff.signIn();
-    const server = testQueryClient();
-    await server.prefetchQuery(currentUserQuery(ProxyHttpClient));
-    const browser = testQueryClient();
-    hydrate(browser, dehydrate(server));
+    const browser = await prefetchedQueryClient((queryClient) =>
+      queryClient.prefetchQuery(currentUserQuery(ProxyHttpClient)),
+    );
     const requestsBefore = bff.backend.requests.length;
 
     const { result } = renderHookWithProviders(useHeaderViewModel, browser);
 
     expect(result.current.state.user).toStrictEqual({
       _tag: "Loaded",
-      user: DEMO_USER,
+      user: SIGNED_IN_USER,
     });
     expect(bff.backend.requests.length).toBe(requestsBefore);
   });

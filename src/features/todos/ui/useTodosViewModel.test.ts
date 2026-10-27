@@ -1,7 +1,8 @@
-import { dehydrate, hydrate, type QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { DEMO_TODOS, DEMO_USER, type FakeTodo } from "@test/fakeBackend";
 import { installFakeBff } from "@test/fakeBff";
 import {
+  prefetchedQueryClient,
   renderHookWithProviders,
   testQueryClient,
 } from "@test/renderWithProviders";
@@ -33,10 +34,9 @@ describe("useTodosViewModel", () => {
 
   it("renders the todos prefetched on the server without loading", async () => {
     bff.signIn();
-    const server = testQueryClient();
-    await server.prefetchQuery(todosQuery(ProxyHttpClient));
-    const browser = testQueryClient();
-    hydrate(browser, dehydrate(server));
+    const browser = await prefetchedQueryClient((queryClient) =>
+      queryClient.prefetchQuery(todosQuery(ProxyHttpClient)),
+    );
     const requestsBefore = bff.backend.requests.length;
 
     const { result } = renderHookWithProviders(useTodosViewModel, browser);

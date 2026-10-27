@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { FAKE_BE_URL, fakeJwt } from "@test/fakeBackend";
 import { installFakeBackend } from "@test/installFakeBackend";
+import { installFrozenClock, MINUTE } from "@test/installFrozenClock";
 import { NextRequest } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { GET, POST } from "@/app/proxy/[...path]/route";
 
 const backend = installFakeBackend({
@@ -13,13 +14,7 @@ const backend = installFakeBackend({
 });
 
 const NOW = new Date("2026-10-27T12:00:00Z");
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(NOW);
-});
-afterEach(() => vi.useRealTimers());
-
-const MINUTE = 60_000;
+const clock = installFrozenClock(NOW);
 
 function proxyRequest(
   path: string,
@@ -115,7 +110,7 @@ describe("/proxy/[...path]", () => {
 
   it("renews an expired access token, retries and sets the new cookies", async () => {
     const tokens = backend.current.login();
-    vi.setSystemTime(NOW.getTime() + 61 * MINUTE);
+    clock.elapse(61 * MINUTE);
 
     const response = await send(GET, "/proxy/auth/me", {
       headers: { cookie: sessionCookie(tokens) },

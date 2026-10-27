@@ -1,20 +1,16 @@
 // @vitest-environment node
 import { fakeJwt } from "@test/fakeBackend";
 import { installFakeBackend } from "@test/installFakeBackend";
+import { installFrozenClock, MINUTE } from "@test/installFrozenClock";
 import { getRedirectUrl } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { proxy } from "@/proxy";
 
 const backend = installFakeBackend();
 
 const NOW = new Date("2026-10-27T12:00:00Z");
-const MINUTE = 60_000;
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(NOW);
-});
-afterEach(() => vi.useRealTimers());
+const clock = installFrozenClock(NOW);
 
 function visit(path: string, cookies: Record<string, string> = {}) {
   const cookie = Object.entries(cookies)
@@ -116,7 +112,7 @@ describe("proxy", () => {
       ["near expiry", 59.5 * MINUTE],
     ])("renews an %s token and serves the page with it", async (_, elapsed) => {
       const tokens = backend.current.login();
-      vi.setSystemTime(NOW.getTime() + elapsed);
+      clock.elapse(elapsed);
 
       const response = await visit("/todos", session(tokens));
 

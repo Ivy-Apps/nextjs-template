@@ -6,13 +6,10 @@ describe("POST /api/auth/logout", () => {
   it("clears both session cookies", () => {
     const response = POST();
 
-    for (const name of ["access_token", "refresh_token"]) {
-      expect(response.cookies.get(name)).toMatchObject({
-        value: "",
-        maxAge: 0,
-        path: "/",
-        httpOnly: true,
-      });
-    }
+    const cleared = { value: "", maxAge: 0, path: "/", httpOnly: true };
+    expect([
+      response.cookies.get("access_token"),
+      response.cookies.get("refresh_token"),
+    ]).toMatchObject([cleared, cleared]);
   });
 });
