@@ -181,5 +181,16 @@ describe("proxy", () => {
       expect(getRedirectUrl(response)).toBeNull();
       expect(response.cookies.getAll()).toStrictEqual([]);
     });
+
+    it("answers 502 and keeps the cookies when the backend fails to renew", async () => {
+      const tokens = backend.current.login();
+      clock.elapse(61 * MINUTE);
+      backend.current.breakDown();
+
+      const response = await visit("/todos", session(tokens));
+
+      expect(response.status).toBe(502);
+      expect(response.cookies.getAll()).toStrictEqual([]);
+    });
   });
 });

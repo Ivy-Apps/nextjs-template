@@ -170,3 +170,33 @@ export type UiEvent =
   (`e2e/fakeBackendServer.ts`) serves the same in-memory DummyJSON
   (`test/fakeBackend.ts`) over HTTP on port 3078 and the app gets it as
   `BE_URL`, so e2e is deterministic and offline.
+
+## Mutation testing
+
+Stryker changes the code one small edit at a time and runs the `unit` tests
+against each edit. A mutant that no test notices is a line the tests do not
+pin. It measures the `.ts` logic only: Views are Storybook's and Playwright's,
+which Stryker cannot see.
+
+- `just mutation` is incremental: it reruns only the mutants whose code or
+  tests changed since `reports/stryker-incremental.json`, in about a minute.
+  `just mutation --force` reruns all of them, in about ten.
+- It prints a score per file and writes `reports/mutation/mutation.html`.
+- It is advisory: outside `just check`, and no score fails anything. CI runs
+  it on each pull request, weekly and by hand (`.github/workflows/mutation.yml`)
+  and puts the score in the job summary, the report in an artifact.
+
+Reading a survivor (open the HTML report, filter on Survived):
+
+| Survivor                                                                                          | What to do                                       |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| A behavior can change and nothing fails                                                           | A real gap: add a test for the behavior          |
+| The code behaves the same (an equivalent mutant, such as a `case "Unchanged":` that only returns) | Ignore it                                        |
+| A log or error text changed                                                                       | Usually noise: test it only if a caller reads it |
+| NoCoverage                                                                                        | No test reaches the code at all                  |
+
+Apply a doubtful survivor by hand and run `just test`: the two must agree.
+`test/stryker.setup.ts` fixes the fast-check seed for this: a random seed
+renames each property test, so Stryker would skip it and report false
+survivors. Stryker has no type checker here (TypeScript 7), so a few survivors
+do not compile.

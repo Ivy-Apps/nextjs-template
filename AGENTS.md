@@ -21,3 +21,7 @@ runs everything CI runs (Biome, tsc, Deslop, Vitest, Storybook stories,
 `next build`, Playwright). Give each new View a `*.stories.tsx` with one story
 per `UiState` variant (see "Stories" in `docs/ARCHITECTURE.md`); `just
 storybook` serves them on port 3006 and `just stories` tests them.
+
+`just mutation` measures how well the tests pin the `.ts` logic with Stryker.
+It is advisory and outside `just check`; see "Mutation testing" in
+`docs/ARCHITECTURE.md` for how to read survivors.
