@@ -29,6 +29,8 @@
     "@playwright/test": "1.64.1",
     "@storybook/addon-vitest": "10.6.5",
     "@storybook/nextjs-vite": "10.6.5",
+    "@stryker-mutator/core": "10.1.1",
+    "@stryker-mutator/vitest-runner": "10.1.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/dom": "10.4.2",

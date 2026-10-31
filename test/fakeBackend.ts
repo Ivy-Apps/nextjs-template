@@ -23,7 +23,7 @@ export function fakeBackend(options: FakeBackendOptions = {}): FakeBackend {
   const todos = options.todos ?? DEMO_TODOS;
   const issued = new Map<string, Token>();
   const requests: Array<ReceivedRequest> = [];
-  let up = true;
+  let health: Health = "Up";
 
   const issue = (kind: Token["kind"], expiresInMins: number): string => {
     const exp = Math.floor(Date.now() / 1000) + expiresInMins * 60;
@@ -138,12 +138,25 @@ export function fakeBackend(options: FakeBackendOptions = {}): FakeBackend {
         body: await request.text(),
       };
       requests.push(received);
-      return up ? handle(received) : unreachable();
+      switch (health) {
+        case "Up":
+          return handle(received);
+        case "Unreachable":
+          return unreachable();
+        case "Failing":
+          return Response.json(
+            { message: "Internal Server Error" },
+            { status: 500 },
+          );
+      }
     },
     login: () => issuePair(DEFAULT_ACCESS_TOKEN_LIFETIME_MINUTES),
     revokeTokens: () => issued.clear(),
     takeDown: () => {
-      up = false;
+      health = "Unreachable";
+    },
+    breakDown: () => {
+      health = "Failing";
     },
   };
 }
@@ -160,7 +173,11 @@ export type FakeBackend = {
   readonly revokeTokens: () => void;
   /** Every request fails in transport from now on. */
   readonly takeDown: () => void;
+  /** Every request is answered with a 500 from now on. */
+  readonly breakDown: () => void;
 };
+
+type Health = "Up" | "Unreachable" | "Failing";
 
 export type FakeBackendOptions = {
   /** Static routes by pathname; they override the todos endpoints. */

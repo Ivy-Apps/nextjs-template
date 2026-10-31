@@ -1,0 +1,195 @@
+name: Mutation
+
+# Stryker's mutation score of the `.ts` logic. Advisory, outside `just check`
+# and never a required check: thresholds.break is null, so a low score passes,
+# and on a pull request a Stryker crash or a failed report upload does not fail
+# the job either. They do on the schedule or a manual run, because nobody reads
+# those otherwise.
+#
+# A pull request runs only the mutants whose code or tests changed since the
+# incremental file it restores. The schedule and manual runs test every mutant,
+# because the incremental file cannot see a dependency bump or a change to a
+# fake in `test/`, and on `main` they save the file pull requests start from.
+#
+# A pull request also gets one comment, updated on each push, with the Survived
+# and NoCoverage mutants of the files it changed. It never fails anything.
+
+on:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      diff-artifact-url: ${{ steps.diff-artifact.outputs.artifact-url }}
+    env:
+      INCREMENTAL_FILE: reports/stryker-incremental.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # A pull request checks out its merge commit: the first parent is the
+          # base, which the changed code report diffs against.
+          fetch-depth: 2
+
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
+      - uses: DeterminateSystems/magic-nix-cache-action@84c0677f58dcedf3b91f8223ce36a9ea5b3c84b7 # v15
+
+      # Cache entries are immutable, so each run saves its own key and restores
+      # the newest one its ref can read: its own, then `main`'s. A pull
+      # request's entries are scoped to that pull request, so a fork can never
+      # write what `main` or another pull request restores.
+      - name: Restore the incremental file
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.INCREMENTAL_FILE }}
+          key: stryker-incremental-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: stryker-incremental-
+
+      - name: Run Stryker
+        id: stryker
+        # Bash here for its pipefail: without it `tee` hides a crash.
+        shell: bash
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        # Under the job's, so the steps below still report a hung run.
+        timeout-minutes: 25
+        env:
+          MODE: ${{ github.event_name == 'pull_request' && '--incremental' || '--force' }}
+        run: |
+          nix develop -c just mutation --allowConsoleColors false "$MODE" --incrementalFile "$INCREMENTAL_FILE" \
+            | tee "$RUNNER_TEMP/stryker.log"
+
+      - name: Save the incremental file
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.INCREMENTAL_FILE }}
+          key: ${{ steps.restore.outputs.cache-primary-key }}
+
+      - name: Report the score
+        if: always()
+        env:
+          OUTCOME: ${{ steps.stryker.outcome }}
+        run: |
+          {
+            echo '## Mutation score (advisory)'
+            if [ "$OUTCOME" = success ]; then
+              echo '```text'
+              grep -E '(\|.*){7}' "$RUNNER_TEMP/stryker.log"
+              echo '```'
+            else
+              echo "Stryker did not finish ($OUTCOME): see the job log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        if: always()
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Build the changed code report
+        id: diff
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && hashFiles('reports/mutation/mutation.json') != '' }}
+        continue-on-error: true
+        run: |
+          mkdir -p reports/mutation-diff
+          git diff -z --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed-files"
+          jq --rawfile changed "$RUNNER_TEMP/changed-files" -f scripts/mutation-diff.jq \
+            reports/mutation/mutation.json > reports/mutation-diff/mutation-diff.json
+          jq -r -f scripts/mutation-comment.jq reports/mutation-diff/mutation-diff.json \
+            > reports/mutation-diff/comment.md
+
+      - name: Upload the changed code report
+        id: diff-artifact
+        if: ${{ !cancelled() && steps.diff.outcome == 'success' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-diff
+          path: reports/mutation-diff/
+          retention-days: 30
+          if-no-files-found: error
+
+  # A job of its own, so the write token is never near PR code: it checks nothing
+  # out, runs only GitHub's actions plus gh and jq, and treats the artifact as
+  # text. Forks and Dependabot get a read-only token, and keep the job summary.
+  comment:
+    name: Mutation comment
+    needs: mutation
+    if: >-
+      !cancelled() && github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      # A run that died before its report has no artifact: the comment says so.
+      - name: Download the changed code report
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mutation-diff
+          path: mutation-diff
+
+      - name: Comment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RESULT: ${{ needs.mutation.result }}
+          ARTIFACT_URL: ${{ needs.mutation.outputs.diff-artifact-url }}
+        run: |
+          marker='<!-- mutation-report -->'
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fence='```'
+          {
+            printf '%s\n### 🧬 Mutation testing\n\nFor `%s`, [run](%s).' "$marker" "$HEAD_SHA" "$run_url"
+            if [ "$RESULT" != success ]; then
+              printf ' **The run failed, so read these numbers with care.**'
+            fi
+            printf '\n\n'
+            if [ -f mutation-diff/comment.md ]; then
+              cat mutation-diff/comment.md
+              cat <<EOF
+
+          Fetch [the mutants above, uncut]($ARTIFACT_URL), then the full report:
+
+          ${fence}bash
+          gh run download $GITHUB_RUN_ID -R $GITHUB_REPOSITORY -n mutation-diff -D /tmp/mutation-diff
+          # /tmp/mutation-diff/mutation-diff.json
+          gh run download $GITHUB_RUN_ID -R $GITHUB_REPOSITORY -n mutation-report -D /tmp/mutation-report
+          # /tmp/mutation-report/mutation.json
+          $fence
+          EOF
+            else
+              echo 'Did not finish, so there are no numbers for this push.'
+            fi
+          } > body.md
+          payload="$(jq -n --rawfile body body.md '{body: $body}')"
+          id="$(MARKER="$marker" gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith(env.MARKER))) | .id' | head -n 1)"
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" --input - <<<"$payload" >/dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --input - <<<"$payload" >/dev/null
+          fi

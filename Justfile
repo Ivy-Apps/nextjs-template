@@ -49,5 +49,11 @@ build:
 e2e:
     pnpm playwright test
 
+# Mutation score of the `.ts` logic, in the terminal and at
+# reports/mutation/mutation.{html,json}. Advisory and slow, so not part of `check`.
+# Incremental; pass `--force` to rerun every mutant.
+mutation *args: install
+    pnpm stryker run {{args}}
+
 # Everything CI runs, each step once.
 check: install lint typecheck arch test stories build e2e
