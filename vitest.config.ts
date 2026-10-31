@@ -1,7 +1,7 @@
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
-import { unitProject } from "./vitest.unit.ts";
+import { unitProject } from "./vitest.unit";
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

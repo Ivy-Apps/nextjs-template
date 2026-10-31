@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig } from "vitest/config";
-import { unitProject } from "./vitest.unit.ts";
+import { unitProject } from "./vitest.unit";
 
 // The `unit` project alone: Stryker's runner has no project filter, and the
 // `storybook` project's browser mode kills its dry run.

@@ -7,17 +7,8 @@ import {
   forwardSessionUpdate,
   REFRESH_TOKEN_COOKIE,
   readSessionCookies,
-  type SessionUpdate,
 } from "@/data/session/sessionCookies";
 import { AccessToken, RefreshToken } from "@/data/session/Tokens";
-
-const RENEWED: SessionUpdate = {
-  _tag: "Renewed",
-  tokens: {
-    accessToken: AccessToken.make("new-access"),
-    refreshToken: RefreshToken.make("new-refresh"),
-  },
-};
 
 function requestWith(cookies: Record<string, string>): NextRequest {
   const request = new NextRequest("https://app.test/");
@@ -65,7 +56,13 @@ describe("forwardSessionUpdate", () => {
   it("hands the rest of the request both renewed tokens", () => {
     const request = requestWith(LIVE_SESSION);
 
-    forwardSessionUpdate(request.cookies, RENEWED);
+    forwardSessionUpdate(request.cookies, {
+      _tag: "Renewed",
+      tokens: {
+        accessToken: AccessToken.make("new-access"),
+        refreshToken: RefreshToken.make("new-refresh"),
+      },
+    });
 
     expect(cookiesOf(request)).toStrictEqual({
       [ACCESS_TOKEN_COOKIE]: "new-access",

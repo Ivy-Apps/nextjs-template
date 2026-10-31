@@ -27,6 +27,8 @@ jobs:
   mutation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      INCREMENTAL_FILE: reports/stryker-incremental.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -40,9 +42,10 @@ jobs:
       # request's entries are scoped to that pull request, so a fork can never
       # write what `main` or another pull request restores.
       - name: Restore the incremental file
+        id: restore
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: reports/stryker-incremental.json
+          path: ${{ env.INCREMENTAL_FILE }}
           key: stryker-incremental-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: stryker-incremental-
 
@@ -61,8 +64,8 @@ jobs:
         if: always()
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: reports/stryker-incremental.json
-          key: stryker-incremental-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.INCREMENTAL_FILE }}
+          key: ${{ steps.restore.outputs.cache-primary-key }}
 
       - name: Report the score
         if: always()
