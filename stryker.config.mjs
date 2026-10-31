@@ -23,6 +23,6 @@ export default {
   incremental: true,
   // Advisory: a score is reported, never enforced.
   thresholds: { high: 90, low: 80, break: null },
-  reporters: ["clear-text", "progress-append-only", "html"],
+  reporters: ["clear-text", "progress-append-only", "html", "json"],
   clearTextReporter: { reportTests: false, reportMutants: false },
 };
