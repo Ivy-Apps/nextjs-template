@@ -179,8 +179,10 @@ pin. It measures the `.ts` logic only: Views are Storybook's and Playwright's,
 which Stryker cannot see.
 
 - `just mutation` is incremental: it reruns only the mutants whose code or
-  tests changed since `reports/stryker-incremental.json`, in about a minute.
-  `just mutation --force` reruns all of them, in about ten.
+  tests changed since `reports/stryker-incremental.json`. With nothing changed
+  that takes 29-37s. `reports/` is git-ignored, so the first run in a checkout
+  is a full one. So is `just mutation --force`, which reruns every mutant. A
+  full run takes 7-8 minutes on the build server.
 - It prints a score per file and writes `reports/mutation/mutation.html`.
 - It is advisory: outside `just check`, and no score fails anything. CI runs
   it on each pull request, weekly and by hand (`.github/workflows/mutation.yml`)
@@ -195,8 +197,9 @@ Reading a survivor (open the HTML report, filter on Survived):
 | A log or error text changed                                                                       | Usually noise: test it only if a caller reads it |
 | NoCoverage                                                                                        | No test reaches the code at all                  |
 
-Apply a doubtful survivor by hand and run `just test`: the two must agree.
-`test/stryker.setup.ts` fixes the fast-check seed for this: a random seed
+Apply a doubtful survivor by hand and run `just test` several times: it uses a
+random fast-check seed, so a property test may catch the change on some runs
+only. `test/stryker.setup.ts` fixes the seed for Stryker alone: a random seed
 renames each property test, so Stryker would skip it and report false
 survivors. Stryker has no type checker here (TypeScript 7), so a few survivors
 do not compile.

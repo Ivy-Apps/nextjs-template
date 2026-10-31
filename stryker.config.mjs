@@ -21,7 +21,6 @@ export default {
   ignoreStatic: true,
   ignorePatterns: [".next", "e2e", "playwright-report"],
   incremental: true,
-  incrementalFile: "reports/stryker-incremental.json",
   // Advisory: a score is reported, never enforced.
   thresholds: { high: 90, low: 80, break: null },
   reporters: ["clear-text", "progress-append-only", "html"],
