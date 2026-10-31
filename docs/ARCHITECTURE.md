@@ -183,10 +183,15 @@ which Stryker cannot see.
   that takes 29-37s. `reports/` is git-ignored, so the first run in a checkout
   is a full one. So is `just mutation --force`, which reruns every mutant. A
   full run takes 7-8 minutes on the build server.
-- It prints a score per file and writes `reports/mutation/mutation.html`.
+- It prints a score per file and writes `reports/mutation/mutation.html` and
+  `mutation.json`.
 - It is advisory: outside `just check`, and no score fails anything. CI runs
   it on each pull request, weekly and by hand (`.github/workflows/mutation.yml`)
   and puts the score in the job summary, the report in an artifact.
+- On a pull request a bot keeps one comment with the Survived and NoCoverage
+  mutants of the changed `.ts` files, whole files, with how to fetch the small
+  `mutation-diff` artifact and the full report. A pull request that changes no
+  mutated file shows no mutants: that says nothing about its tests.
 
 Reading a survivor (open the HTML report, filter on Survived):
 
