@@ -9,7 +9,7 @@ async function handler(
   context: RouteContext<"/proxy/[...path]">,
 ) {
   const { path } = await context.params;
-  if (path.length > 99) return new Response("too deep", { status: 414 });
+  if (path.length > 98) return new Response("too deep", { status: 414 });
   return Effect.runPromise(
     passThrough(request, path).pipe(Effect.provide(BackendHttpClient)),
   );
