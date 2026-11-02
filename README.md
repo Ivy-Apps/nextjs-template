@@ -24,6 +24,8 @@ browsers) comes from the dev shell:
 nix develop                 # enter the dev shell, or prefix each command:
 nix develop -c just dev     # http://localhost:3000
 nix develop -c just check   # everything CI runs
+nix develop -c just mutation    # advisory mutation score, not part of check
+nix develop -c just mutation-diff  # surviving mutants on the lines you changed
 ```
 
 Other recipes: `just --list`.

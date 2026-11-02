@@ -151,6 +151,16 @@ describe("useTodosViewModel", () => {
     );
   });
 
+  it("saves the toggled completion to the backend", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+
+    act(() => result.current.onEvent({ _tag: "ToggleTodo", todo: MILK }));
+    await settled(queryClient);
+
+    const save = bff.backend.requests.find(({ method }) => method === "PUT");
+    expect(save?.body).toBe(JSON.stringify({ completed: !MILK.completed }));
+  });
+
   it("toggles the todo back when the backend refuses, and says so", async () => {
     const { result, queryClient } = await signedInWithTodos();
     bff.takeBackendDown();
@@ -257,6 +267,18 @@ describe("useTodosViewModel", () => {
     await settled(queryClient);
 
     expect(fakeRouter.path).toBe("/login?returnTo=%2F");
+  });
+
+  it("stays on the page and says so when the backend fails during a change", async () => {
+    const { result, queryClient } = await signedInWithTodos();
+    const path = fakeRouter.path;
+    bff.backend.breakDown();
+
+    act(() => result.current.onEvent({ _tag: "DeleteTodo", todo: MILK }));
+    await settled(queryClient);
+
+    expect(result.current.state).toMatchObject({ alert: "DeleteFailed" });
+    expect(fakeRouter.path).toBe(path);
   });
 
   it("clears the alert on the next change", async () => {
