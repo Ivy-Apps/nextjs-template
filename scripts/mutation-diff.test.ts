@@ -348,7 +348,8 @@ describe("renderMarkdown", () => {
       Number.POSITIVE_INFINITY,
     );
 
-    const fenced = markdown.slice(markdown.indexOf("```diff\n") + 8);
+    const open = "```diff\n";
+    const fenced = markdown.slice(markdown.indexOf(open) + open.length);
     expect(fenced.split("\n").filter((l) => l.startsWith("```"))).toEqual([
       "```",
     ]);

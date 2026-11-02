@@ -38,14 +38,18 @@ export interface LineRange {
 /** Repository-relative path -> the new-side lines the diff adds or edits. */
 export type ChangedLines = ReadonlyMap<string, readonly LineRange[]>;
 
-type StrykerStatus =
-  | "Killed"
-  | "Survived"
-  | "NoCoverage"
-  | "Timeout"
-  | "CompileError"
-  | "RuntimeError"
-  | "Ignored";
+// "Pending" is absent on purpose: a report that holds one is unfinished.
+const STRYKER_STATUSES = [
+  "Killed",
+  "Survived",
+  "NoCoverage",
+  "Timeout",
+  "CompileError",
+  "RuntimeError",
+  "Ignored",
+] as const;
+
+type StrykerStatus = (typeof STRYKER_STATUSES)[number];
 
 interface Position {
   readonly line: number;
@@ -67,7 +71,8 @@ export interface StrykerReport {
   >;
 }
 
-type ListedStatus = "survived" | "uncovered" | "timedOut";
+const LISTED_STATUSES = ["survived", "uncovered", "timedOut"] as const;
+type ListedStatus = (typeof LISTED_STATUSES)[number];
 type Outcome = "killed" | "skipped" | ListedStatus;
 
 export type Totals = { readonly mutants: number } & Record<Outcome, number>;
@@ -239,17 +244,6 @@ function parseMutant(json: unknown, path: string): StrykerMutant {
   };
 }
 
-const STRYKER_STATUSES: readonly StrykerStatus[] = [
-  "Killed",
-  "Survived",
-  "NoCoverage",
-  "Timeout",
-  "CompileError",
-  "RuntimeError",
-  "Ignored",
-];
-
-// "Pending" is absent on purpose: a report that holds one is unfinished.
 function strykerStatus(json: unknown): StrykerStatus {
   const status = STRYKER_STATUSES.find((s) => s === json);
   if (status === undefined) throw new Error(`unknown status ${String(json)}`);
@@ -345,9 +339,7 @@ function outcome(mutant: StrykerMutant): Outcome {
 }
 
 function isListed(outcome: Outcome): outcome is ListedStatus {
-  return (
-    outcome === "survived" || outcome === "uncovered" || outcome === "timedOut"
-  );
+  return LISTED_STATUSES.some((s) => s === outcome);
 }
 
 /** Stryker's columns are 1-based and its end column is exclusive. */
