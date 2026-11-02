@@ -6,13 +6,16 @@ name: Mutation
 # the job either. They do on the schedule or a manual run, because nobody reads
 # those otherwise.
 #
-# A pull request runs only the mutants whose code or tests changed since the
-# incremental file it restores. The schedule and manual runs test every mutant,
-# because the incremental file cannot see a dependency bump or a change to a
-# fake in `test/`, and on `main` they save the file pull requests start from.
+# A pull request runs `just mutation-diff` against its base branch: only the
+# mutants whose code or tests changed since the incremental file it restores,
+# then the report cut to the mutants on the lines it adds or edits. The schedule
+# and manual runs test every mutant, because the incremental file cannot see a
+# dependency bump or a change to a fake in `test/`, and on `main` they save the
+# file pull requests start from.
 #
-# A pull request also gets one comment, updated on each push, with the Survived
-# and NoCoverage mutants of the files it changed. It never fails anything.
+# A pull request also gets one comment, updated on each push, with the
+# survived, uncovered and timed out mutants on its changed lines. It never
+# fails anything.
 
 on:
   pull_request:
@@ -39,9 +42,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-          # A pull request checks out its merge commit: the first parent is the
-          # base, which the changed code report diffs against.
-          fetch-depth: 2
+          # A pull request checks out its head, as a local `just mutation-diff`
+          # would, with the history its merge-base with the base branch needs.
+          # Empty off a pull request: the default ref.
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
       - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
       - uses: DeterminateSystems/magic-nix-cache-action@84c0677f58dcedf3b91f8223ce36a9ea5b3c84b7 # v15
@@ -58,17 +63,26 @@ jobs:
           key: stryker-incremental-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: stryker-incremental-
 
-      - name: Run Stryker
-        id: stryker
-        # Bash here for its pipefail: without it `tee` hides a crash.
-        shell: bash
-        continue-on-error: ${{ github.event_name == 'pull_request' }}
+      # Writes reports/mutation-diff/: mutation-diff.{json,md}, and comment.md,
+      # the same report cut to fit a comment.
+      - name: Run Stryker on the changed lines
+        id: diff
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
         # Under the job's, so the steps below still report a hung run.
         timeout-minutes: 25
         env:
-          MODE: ${{ github.event_name == 'pull_request' && '--incremental' || '--force' }}
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop -c just mutation-diff "origin/$BASE_REF"
+
+      - name: Run Stryker on every mutant
+        id: full
+        if: github.event_name != 'pull_request'
+        # Bash here for its pipefail: without it `tee` hides a crash.
+        shell: bash
+        timeout-minutes: 25
         run: |
-          nix develop -c just mutation --allowConsoleColors false "$MODE" --incrementalFile "$INCREMENTAL_FILE" \
+          nix develop -c just mutation --allowConsoleColors false --force --incrementalFile "$INCREMENTAL_FILE" \
             | tee "$RUNNER_TEMP/stryker.log"
 
       - name: Save the incremental file
@@ -81,16 +95,19 @@ jobs:
       - name: Report the score
         if: always()
         env:
-          OUTCOME: ${{ steps.stryker.outcome }}
+          DIFF: ${{ steps.diff.outcome }}
+          FULL: ${{ steps.full.outcome }}
         run: |
           {
             echo '## Mutation score (advisory)'
-            if [ "$OUTCOME" = success ]; then
+            if [ "$DIFF" = success ]; then
+              cat reports/mutation-diff/mutation-diff.md
+            elif [ "$FULL" = success ]; then
               echo '```text'
               grep -E '(\|.*){7}' "$RUNNER_TEMP/stryker.log"
               echo '```'
             else
-              echo "Stryker did not finish ($OUTCOME): see the job log."
+              echo "Stryker did not finish: see the job log."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -104,18 +121,6 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-      - name: Build the changed code report
-        id: diff
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && hashFiles('reports/mutation/mutation.json') != '' }}
-        continue-on-error: true
-        run: |
-          mkdir -p reports/mutation-diff
-          git diff -z --name-only HEAD^1 HEAD > "$RUNNER_TEMP/changed-files"
-          jq --rawfile changed "$RUNNER_TEMP/changed-files" -f scripts/mutation-diff.jq \
-            reports/mutation/mutation.json > reports/mutation-diff/mutation-diff.json
-          jq -r -f scripts/mutation-comment.jq reports/mutation-diff/mutation-diff.json \
-            > reports/mutation-diff/comment.md
-
       - name: Upload the changed code report
         id: diff-artifact
         if: ${{ !cancelled() && steps.diff.outcome == 'success' }}
@@ -123,7 +128,10 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mutation-diff
-          path: reports/mutation-diff/
+          path: |
+            reports/mutation-diff/mutation-diff.json
+            reports/mutation-diff/mutation-diff.md
+            reports/mutation-diff/comment.md
           retention-days: 30
           if-no-files-found: error
 
@@ -176,7 +184,7 @@ jobs:
 
           ${fence}bash
           gh run download $GITHUB_RUN_ID -R $GITHUB_REPOSITORY -n mutation-diff -D /tmp/mutation-diff
-          # /tmp/mutation-diff/mutation-diff.json
+          # /tmp/mutation-diff/mutation-diff.{json,md}
           gh run download $GITHUB_RUN_ID -R $GITHUB_REPOSITORY -n mutation-report -D /tmp/mutation-report
           # /tmp/mutation-report/mutation.json
           $fence

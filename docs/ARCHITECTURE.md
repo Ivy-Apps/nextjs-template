@@ -188,10 +188,19 @@ which Stryker cannot see.
 - It is advisory: outside `just check`, and no score fails anything. CI runs
   it on each pull request, weekly and by hand (`.github/workflows/mutation.yml`)
   and puts the score in the job summary, the report in an artifact.
-- On a pull request a bot keeps one comment with the Survived and NoCoverage
-  mutants of the changed `.ts` files, whole files, with how to fetch the small
-  `mutation-diff` artifact and the full report. A pull request that changes no
-  mutated file shows no mutants: that says nothing about its tests.
+- `just mutation-diff [base]` (default `origin/main`) lists only the mutants
+  on the lines changed since the merge-base with `base`, committed or not: the
+  survived, uncovered (NoCoverage) and timed out ones, with file, line,
+  operator, original and replacement. A mutant counts when its span overlaps a
+  changed line, so an edit inside a block lists the block's mutant too. It
+  prints a short markdown report, writes `reports/mutation-diff/mutation-diff.json`
+  and `.md`, and keeps Stryker's log in `stryker.log` there. It exits 0
+  whatever survives, non-zero only when Stryker itself fails. A diff that only
+  deletes lines or touches only tests, Views or config says it was not
+  assessed.
+- On a pull request CI runs the same recipe against the pull request's base
+  branch, and a bot keeps one comment with that report and how to fetch the
+  `mutation-diff` artifact (both files, uncut) and the full report.
 
 Reading a survivor (open the HTML report, filter on Survived):
 

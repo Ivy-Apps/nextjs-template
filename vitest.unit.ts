@@ -7,7 +7,11 @@ export const unitProject = defineConfig({
   test: {
     name: "unit",
     environment: "happy-dom",
-    include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
+    include: [
+      "src/**/*.test.{ts,tsx}",
+      "test/**/*.test.{ts,tsx}",
+      "scripts/**/*.test.ts",
+    ],
     setupFiles: ["test/setup.ts"],
     // next-intl imports `next/server` without an extension, which
     // Node's ESM resolver rejects; let Vite resolve it instead.

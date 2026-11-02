@@ -55,5 +55,13 @@ e2e:
 mutation *args: install
     pnpm stryker run {{args}}
 
+# The survived, uncovered and timed out mutants on the lines changed since the
+# merge-base with `base`, as markdown on stdout and in reports/mutation-diff/.
+# CI's pull request comment runs this too. Advisory: exits 0 whatever survives.
+[positional-arguments]
+mutation-diff base="origin/main":
+    @just install >&2
+    @node scripts/mutation-diff.ts "$1"
+
 # Everything CI runs, each step once.
 check: install lint typecheck arch test stories build e2e

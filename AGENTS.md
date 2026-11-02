@@ -23,5 +23,7 @@ per `UiState` variant (see "Stories" in `docs/ARCHITECTURE.md`); `just
 storybook` serves them on port 3006 and `just stories` tests them.
 
 `just mutation` measures how well the tests pin the `.ts` logic with Stryker.
-It is advisory and outside `just check`; see "Mutation testing" in
+`just mutation-diff` lists only the surviving mutants on the lines you changed
+since `origin/main`; each pull request gets the same report as a comment. Both
+are advisory and outside `just check`; see "Mutation testing" in
 `docs/ARCHITECTURE.md` for how to read survivors.
