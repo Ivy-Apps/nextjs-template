@@ -3,6 +3,7 @@ import { todo, todoList } from "@test/todoArbitraries";
 import { describe, expect } from "vitest";
 import {
   insert,
+  remainingCount,
   remove,
   setCompleted,
   type TodoList,
@@ -84,6 +85,37 @@ describe("setCompleted", () => {
       );
     },
   );
+});
+
+describe("remainingCount", () => {
+  test.prop([listWithPick])(
+    "drops by one when an open todo is done, and stays when a done one is",
+    ({ list, picked }) => {
+      const before = remainingCount(list);
+
+      const after = remainingCount(setCompleted(list, picked, true));
+
+      expect(after).toBe(picked.completed ? before : before - 1);
+    },
+  );
+
+  test.prop([todoList])("is zero once every todo is done", (list) => {
+    const allDone = list.reduce(
+      (done, item) => setCompleted(done, item, true),
+      list,
+    );
+
+    expect(remainingCount(allDone)).toBe(0);
+  });
+
+  test.prop([todoList])("is the list length when nothing is done", (list) => {
+    const noneDone = list.reduce(
+      (open, item) => setCompleted(open, item, false),
+      list,
+    );
+
+    expect(remainingCount(noneDone)).toBe(list.length);
+  });
 });
 
 function without(list: TodoList, index: number): TodoList {

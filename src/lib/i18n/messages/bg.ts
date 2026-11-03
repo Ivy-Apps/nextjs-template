@@ -11,6 +11,8 @@ export const bg: Messages = {
     placeholder: "Какво трябва да се направи?",
     add: "Добави",
     delete: "Изтрий {title}",
+    remaining:
+      "{count, plural, one {# оставаща задача} other {# оставащи задачи}}",
     empty: "Още няма задачи. Добавете първата си задача отгоре.",
     loading: "Задачите се зареждат...",
     loadFailed:

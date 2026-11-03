@@ -1,6 +1,9 @@
 import { useTranslations } from "next-intl";
 import type { Todo } from "@/features/todos/data/Todo";
-import type { TodoList } from "@/features/todos/domain/TodoList";
+import {
+  remainingCount,
+  type TodoList,
+} from "@/features/todos/domain/TodoList";
 import { TodoItem } from "@/features/todos/ui/TodoItem";
 
 type TodoItemsProps = {
@@ -17,15 +20,20 @@ export function TodoItems({ todos, onToggle, onDelete }: TodoItemsProps) {
       {t("empty")}
     </p>
   ) : (
-    <ul className="flex flex-col divide-y divide-border">
-      {todos.map((todo) => (
-        <TodoItem
-          key={`${todo._tag}-${todo.id}`}
-          todo={todo}
-          onToggle={() => onToggle(todo)}
-          onDelete={() => onDelete(todo)}
-        />
-      ))}
-    </ul>
+    <>
+      <ul className="flex flex-col divide-y divide-border">
+        {todos.map((todo) => (
+          <TodoItem
+            key={`${todo._tag}-${todo.id}`}
+            todo={todo}
+            onToggle={() => onToggle(todo)}
+            onDelete={() => onDelete(todo)}
+          />
+        ))}
+      </ul>
+      <p className="text-sm text-muted-foreground">
+        {t("remaining", { count: remainingCount(todos) })}
+      </p>
+    </>
   );
 }

@@ -44,11 +44,51 @@ export const Loaded: Story = {
       _tag: "ToggleTodo",
       todo: todos[0],
     });
+    await expect(canvas.getByText("3 items left")).toBeVisible();
+  },
+};
+
+const oneOpen = [
+  savedTodo(1, "Buy milk", false),
+  savedTodo(2, "Pay rent", true),
+];
+
+export const OneLeft: Story = {
+  args: { state: { _tag: "Loaded", todos: oneOpen, draft: "", alert: "None" } },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("1 item left")).toBeVisible();
+  },
+};
+
+export const OneLeftInBulgarian: Story = {
+  args: OneLeft.args,
+  globals: { locale: "bg" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText("1 оставаща задача")).toBeVisible();
+  },
+};
+
+export const AllDone: Story = {
+  args: {
+    state: {
+      _tag: "Loaded",
+      todos: [savedTodo(1, "Pay rent", true)],
+      draft: "",
+      alert: "None",
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText("0 items left")).toBeVisible();
   },
 };
 
 export const Empty: Story = {
   args: { state: { _tag: "Loaded", todos: [], draft: "", alert: "None" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByText(/items? left/)).toBeNull();
+  },
 };
 
 export const Drafting: Story = {

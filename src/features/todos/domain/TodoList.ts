@@ -33,6 +33,11 @@ export function setCompleted(
   );
 }
 
+/** How many todos are not done yet. */
+export function remainingCount(list: TodoList): number {
+  return list.filter((todo) => !todo.completed).length;
+}
+
 function isTodo(todo: Todo, ref: TodoRef): boolean {
   return todo._tag === ref._tag && todo.id === ref.id;
 }

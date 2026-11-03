@@ -9,6 +9,7 @@ export const en = {
     placeholder: "What needs doing?",
     add: "Add",
     delete: "Delete {title}",
+    remaining: "{count, plural, one {# item left} other {# items left}}",
     empty: "Nothing to do yet. Add your first todo above.",
     loading: "Loading your todos...",
     loadFailed: "Could not load your todos. Reload the page to try again.",
